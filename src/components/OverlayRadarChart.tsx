@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useCallback } from "react";
+import React, { useMemo, useCallback, useState } from "react";
 
 export interface RadarDataPoint {
   subject: string;
@@ -8,9 +8,9 @@ export interface RadarDataPoint {
 }
 
 interface OverlayRadarChartProps {
-  baseData: number[]; // First period data
-  currentData: number[]; // Second period data
-  labels: string[]; // Axis labels
+  baseData: number[];
+  currentData: number[];
+  labels: string[];
   maxScore?: number;
   size?: number;
   colors?: { base: string; current: string };
@@ -24,20 +24,20 @@ export default function OverlayRadarChart({
   labels,
   maxScore = 100,
   size = 350,
-  colors = { base: "#94a3b8", current: "#8b5cf6" }, // Default slate for base, violet for current
+  colors = { base: "#94a3b8", current: "#8b5cf6" },
   baseLabel = "Kỳ đánh giá trước",
   currentLabel = "Kỳ gần nhất",
 }: OverlayRadarChartProps) {
+  const [hoveredAxis, setHoveredAxis] = useState<number | null>(null);
   const numAxes = labels.length;
 
-  // Use a fixed internal SVG coordinate system of 400x400 to provide a safe,
-  // responsive margin and prevent labels from being cropped at the edges.
-  const internalSize = 400;
-  const radius = 110; // Generous space of 90px to the edge of the viewBox
-  const centerX = internalSize / 2; // 200
-  const centerY = internalSize / 2; // 200
+  // Fixed internal SVG coordinate space
+  const internalSize = 420;
+  const radius = 115;
+  const centerX = internalSize / 2;
+  const centerY = internalSize / 2;
 
-  // Generate unique gradient IDs to prevent collisions when multiple charts are rendered
+  // Unique gradient IDs to prevent collisions when multiple charts are rendered
   const baseGradId = useMemo(
     () => `base-grad-${baseLabel.replace(/\s+/g, "-").toLowerCase()}`,
     [baseLabel]
@@ -46,8 +46,11 @@ export default function OverlayRadarChart({
     () => `current-grad-${currentLabel.replace(/\s+/g, "-").toLowerCase()}`,
     [currentLabel]
   );
+  const glowFilterId = useMemo(
+    () => `radar-glow-${currentLabel.replace(/\s+/g, "-").toLowerCase()}`,
+    [currentLabel]
+  );
 
-  // Calculate coordinates for a given value on a specific axis
   const getCoordinates = useCallback(
     (value: number, index: number) => {
       const angle = (Math.PI * 2 * index) / numAxes - Math.PI / 2;
@@ -60,26 +63,16 @@ export default function OverlayRadarChart({
     [centerX, centerY, radius, maxScore, numAxes]
   );
 
-  // Calculate polygon points for both datasets
-  const basePoints = useMemo(() => {
-    return baseData
-      .map((val, i) => {
-        const coords = getCoordinates(val, i);
-        return `${coords.x},${coords.y}`;
-      })
-      .join(" ");
-  }, [baseData, getCoordinates]);
+  const basePoints = useMemo(
+    () => baseData.map((val, i) => getCoordinates(val, i)).map((c) => `${c.x},${c.y}`).join(" "),
+    [baseData, getCoordinates]
+  );
 
-  const currentPoints = useMemo(() => {
-    return currentData
-      .map((val, i) => {
-        const coords = getCoordinates(val, i);
-        return `${coords.x},${coords.y}`;
-      })
-      .join(" ");
-  }, [currentData, getCoordinates]);
+  const currentPoints = useMemo(
+    () => currentData.map((val, i) => getCoordinates(val, i)).map((c) => `${c.x},${c.y}`).join(" "),
+    [currentData, getCoordinates]
+  );
 
-  // Grid levels (concentric polygons)
   const gridLevels = [20, 40, 60, 80, 100];
 
   return (
@@ -92,53 +85,50 @@ export default function OverlayRadarChart({
           className="overflow-visible"
         >
           <defs>
-            {/* Premium Linear Gradients with unique IDs */}
+            {/* Base polygon fill */}
             <linearGradient id={baseGradId} x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor={colors.base} stopOpacity="0.25" />
-              <stop offset="100%" stopColor={colors.base} stopOpacity="0.02" />
+              <stop offset="0%" stopColor={colors.base} stopOpacity="0.28" />
+              <stop offset="100%" stopColor={colors.base} stopOpacity="0.04" />
             </linearGradient>
+            {/* Current polygon fill */}
             <linearGradient id={currentGradId} x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor={colors.current} stopOpacity="0.4" />
-              <stop offset="100%" stopColor={colors.current} stopOpacity="0.08" />
+              <stop offset="0%" stopColor={colors.current} stopOpacity="0.45" />
+              <stop offset="100%" stopColor={colors.current} stopOpacity="0.10" />
             </linearGradient>
-
-            {/* Glowing filter */}
-            <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-              <feGaussianBlur stdDeviation="4" result="blur" />
+            {/* Glow filter for current polygon */}
+            <filter id={glowFilterId} x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="3.5" result="blur" />
               <feComposite in="SourceGraphic" in2="blur" operator="over" />
             </filter>
           </defs>
 
-          {/* Draw grid background levels */}
-          {gridLevels.map((level, i) => {
-            const points = labels
-              .map((_, index) => {
-                const coords = getCoordinates(level, index);
-                return `${coords.x},${coords.y}`;
+          {/* Grid background polygons */}
+          {gridLevels.map((level, idx) => {
+            const pts = labels
+              .map((_, i) => {
+                const c = getCoordinates(level, i);
+                return `${c.x},${c.y}`;
               })
               .join(" ");
-
-            const isOuter = i === gridLevels.length - 1;
-
+            const isOuter = idx === gridLevels.length - 1;
             return (
               <g key={level}>
                 <polygon
-                  points={points}
+                  points={pts}
                   fill="none"
-                  stroke={isOuter ? "#cbd5e1" : "#f1f5f9"}
-                  strokeWidth={isOuter ? "2" : "1"}
-                  className="dark:stroke-slate-700/60 transition-colors duration-300"
+                  stroke={isOuter ? "var(--chart-radar-outer)" : "var(--chart-radar-grid)"}
+                  strokeWidth={isOuter ? "1.5" : "1"}
                   strokeDasharray={isOuter ? "0" : "4 4"}
                 />
-                {/* Score level labels along the top axis */}
+                {/* Score level label along the top axis */}
                 <text
                   x={centerX}
-                  y={centerY - (level / maxScore) * radius + 12}
+                  y={centerY - (level / maxScore) * radius + 13}
                   textAnchor="middle"
                   fontSize="10"
-                  fontWeight="bold"
-                  fill="#94a3b8"
-                  className="dark:fill-slate-500 select-none font-mono"
+                  fontWeight="700"
+                  fill="var(--chart-radar-score-label)"
+                  className="select-none font-mono"
                 >
                   {level}
                 </text>
@@ -146,9 +136,10 @@ export default function OverlayRadarChart({
             );
           })}
 
-          {/* Draw axes spokes */}
+          {/* Axis spokes */}
           {labels.map((_, i) => {
             const end = getCoordinates(maxScore, i);
+            const isActive = hoveredAxis === i;
             return (
               <line
                 key={i}
@@ -156,73 +147,74 @@ export default function OverlayRadarChart({
                 y1={centerY}
                 x2={end.x}
                 y2={end.y}
-                stroke="#cbd5e1"
-                strokeWidth="1.5"
-                className="dark:stroke-slate-800"
+                stroke={isActive ? colors.current : "var(--chart-radar-spoke)"}
+                strokeWidth={isActive ? "2" : "1.5"}
+                style={{ transition: "stroke 0.2s, stroke-width 0.2s" }}
               />
             );
           })}
 
-          {/* Draw Base Polygon - Styled with a dashed stroke for visual separation */}
+          {/* Base polygon */}
           <polygon
             points={basePoints}
             fill={`url(#${baseGradId})`}
             stroke={colors.base}
             strokeWidth="2"
-            strokeDasharray="4 4"
+            strokeDasharray="5 4"
             strokeLinejoin="round"
-            className="transition-all duration-1000 ease-out opacity-90"
+            className="transition-all duration-700 ease-out"
           />
-          {/* Draw Base Points */}
+          {/* Base data points */}
           {baseData.map((val, i) => {
-            const coords = getCoordinates(val, i);
+            const c = getCoordinates(val, i);
             return (
               <circle
                 key={`base-${i}`}
-                cx={coords.x}
-                cy={coords.y}
-                r="3.5"
+                cx={c.x}
+                cy={c.y}
+                r="4"
                 fill={colors.base}
-                className="transition-all duration-1000 ease-out"
+                className="transition-all duration-700 ease-out"
               />
             );
           })}
 
-          {/* Draw Current Polygon (rendered on top) */}
+          {/* Current polygon */}
           <polygon
             points={currentPoints}
             fill={`url(#${currentGradId})`}
             stroke={colors.current}
             strokeWidth="3.5"
             strokeLinejoin="round"
-            filter="url(#glow)"
-            className="transition-all duration-1000 delay-300 ease-out"
+            filter={`url(#${glowFilterId})`}
+            className="transition-all duration-700 delay-200 ease-out"
           />
-          {/* Draw Current Points */}
+          {/* Current data points */}
           {currentData.map((val, i) => {
-            const coords = getCoordinates(val, i);
+            const c = getCoordinates(val, i);
+            const isActive = hoveredAxis === i;
             return (
               <circle
                 key={`current-${i}`}
-                cx={coords.x}
-                cy={coords.y}
-                r="5.5"
-                fill="#ffffff"
+                cx={c.x}
+                cy={c.y}
+                r={isActive ? 8 : 5.5}
+                fill={isActive ? colors.current : "#ffffff"}
                 stroke={colors.current}
                 strokeWidth="2.5"
-                className="transition-all duration-1000 delay-300 ease-out cursor-pointer hover:scale-125"
+                style={{ transition: "r 0.2s ease, fill 0.2s ease" }}
+                className="transition-all duration-700 delay-200 ease-out cursor-pointer"
               />
             );
           })}
 
-          {/* Draw Axis Labels with color-coded progress scores */}
+          {/* Axis labels with scores */}
           {labels.map((label, i) => {
             const angle = (Math.PI * 2 * i) / numAxes - Math.PI / 2;
-            const labelRadius = radius + 22; // Safe padding for labels
+            const labelRadius = radius + 26;
             const x = centerX + Math.cos(angle) * labelRadius;
             const y = centerY + Math.sin(angle) * labelRadius;
 
-            // Adjust text anchoring based on coordinates to keep text in bounds
             let textAnchor: "start" | "middle" | "end" = "middle";
             if (Math.abs(Math.cos(angle)) > 0.1) {
               textAnchor = Math.cos(angle) > 0 ? "start" : "end";
@@ -230,10 +222,12 @@ export default function OverlayRadarChart({
 
             const isTop = Math.abs(angle + Math.PI / 2) < 0.1;
             const isBottom = Math.abs(angle - Math.PI / 2) < 0.1;
-            const dy = isBottom ? 10 : isTop ? -8 : 4;
+            const dy = isBottom ? 12 : isTop ? -10 : 4;
+            const isActive = hoveredAxis === i;
 
             const baseVal = Math.round(baseData[i] || 0);
             const currVal = Math.round(currentData[i] || 0);
+            const improved = currVal > baseVal;
 
             return (
               <text
@@ -241,52 +235,47 @@ export default function OverlayRadarChart({
                 x={x}
                 y={y + dy}
                 textAnchor={textAnchor}
-                className="select-none"
+                className="select-none cursor-pointer"
+                onMouseEnter={() => setHoveredAxis(i)}
+                onMouseLeave={() => setHoveredAxis(null)}
               >
-                {/* Skill Name */}
+                {/* Skill name */}
                 <tspan
                   fontSize="12"
                   fontWeight="900"
-                  fill="#1e293b"
-                  className="dark:fill-slate-200"
+                  fill={isActive ? colors.current : "var(--chart-radar-label)"}
+                  style={{ transition: "fill 0.2s" }}
                 >
                   {label}
                 </tspan>
 
-                {/* Score wrapper ( */}
-                <tspan fontSize="11" fontWeight="bold" fill="#64748b" className="dark:fill-slate-500 font-mono" dx="4">
+                {/* Score bracket */}
+                <tspan fontSize="11" fontWeight="600" fill="var(--chart-radar-score-label)" dx="3">
                   (
                 </tspan>
 
-                {/* Base score value (colored to match base polygon) */}
+                {/* Base score */}
                 {baseVal !== currVal && (
                   <>
-                    <tspan
-                      fontSize="11"
-                      fontWeight="bold"
-                      fill={colors.base}
-                      className="font-mono"
-                    >
+                    <tspan fontSize="11" fontWeight="700" fill={colors.base} className="font-mono">
                       {baseVal}
                     </tspan>
-                    {/* Progress arrow */}
                     <tspan
                       fontSize="11"
-                      fontWeight="bold"
-                      fill="#94a3b8"
+                      fontWeight="700"
+                      fill={improved ? "#10b981" : "#f59e0b"}
                       className="font-mono"
                       dx="2"
-                      dy="0"
                     >
-                      →
+                      {improved ? "↑" : "↓"}
                     </tspan>
                   </>
                 )}
 
-                {/* Current score value (colored to match current polygon) */}
+                {/* Current score */}
                 <tspan
                   fontSize="11"
-                  fontWeight="black"
+                  fontWeight="900"
                   fill={colors.current}
                   className="font-mono"
                   dx={baseVal !== currVal ? "2" : "0"}
@@ -294,8 +283,7 @@ export default function OverlayRadarChart({
                   {currVal}
                 </tspan>
 
-                {/* Score wrapper ) */}
-                <tspan fontSize="11" fontWeight="bold" fill="#64748b" className="dark:fill-slate-500 font-mono">
+                <tspan fontSize="11" fontWeight="600" fill="var(--chart-radar-score-label)">
                   )
                 </tspan>
               </text>
@@ -304,23 +292,37 @@ export default function OverlayRadarChart({
         </svg>
       </div>
 
-      {/* Legend below the chart */}
-      <div className="flex gap-6 mt-4">
+      {/* Legend */}
+      <div className="flex gap-6 mt-5">
         <div className="flex items-center gap-2">
           <div
-            className="w-4 h-4 rounded border border-slate-300 dark:border-slate-600"
-            style={{ backgroundColor: colors.base, opacity: 0.5 }}
-          ></div>
-          <span className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+            className="w-5 h-5 rounded border-2 border-dashed"
+            style={{
+              backgroundColor: colors.base,
+              opacity: 0.45,
+              borderColor: colors.base,
+            }}
+          />
+          <span
+            className="text-xs font-black uppercase tracking-wide"
+            style={{ color: "var(--chart-text)" }}
+          >
             {baseLabel}
           </span>
         </div>
         <div className="flex items-center gap-2">
           <div
-            className="w-4 h-4 rounded border border-violet-400/40 shadow-sm"
-            style={{ backgroundColor: colors.current, opacity: 0.8 }}
-          ></div>
-          <span className="text-xs font-black text-slate-700 dark:text-slate-200 uppercase tracking-wide">
+            className="w-5 h-5 rounded border-2"
+            style={{
+              backgroundColor: colors.current,
+              opacity: 0.8,
+              borderColor: colors.current,
+            }}
+          />
+          <span
+            className="text-xs font-black uppercase tracking-wide"
+            style={{ color: "var(--chart-text-strong)" }}
+          >
             {currentLabel}
           </span>
         </div>

@@ -2,72 +2,210 @@ import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { connectToDatabase } from "@/lib/mongodb";
 import AssessmentResult from "@/models/AssessmentResult";
+import { callGemini, safeJsonParse } from "@/lib/geminiClient";
 
+// Groq client for Whisper STT only
 const groq = new OpenAI({
   apiKey: process.env.GROQ_API_KEY,
   baseURL: "https://api.groq.com/openai/v1",
 });
 
-const mistral = new OpenAI({
-  apiKey: process.env.MISTRAL_API_KEY,
-  baseURL: "https://api.mistral.ai/v1",
-});
-
 import { inMemoryAssessments } from "@/lib/dbStore";
 const DEFAULT_USER_ID = "kid_primary_std_01";
+
+// ─── Levenshtein Distance ─────────────────────────────────────────────────────
+// Used for fuzzy phonetic matching to avoid penalizing near-correct pronunciations.
+function levenshtein(a: string, b: string): number {
+  const m = a.length;
+  const n = b.length;
+  const dp: number[][] = Array.from({ length: m + 1 }, (_, i) =>
+    Array.from({ length: n + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0))
+  );
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] =
+        a[i - 1] === b[j - 1]
+          ? dp[i - 1][j - 1]
+          : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+    }
+  }
+  return dp[m][n];
+}
+
+// Fuzzy phonetic match — strict: edit distance ≤ 1 for ALL word lengths.
+// This accepts minor slips ("climing" → "climbing") but rejects clear misses.
+function fuzzyWordMatch(spoken: string, target: string): boolean {
+  if (spoken === target) return true;
+  // Strict: only 1 edit distance allowed regardless of word length
+  return levenshtein(spoken, target) <= 1;
+}
+
+// ─── YLE Multi-Criteria Speech Scorer ────────────────────────────────────────
+//
+// Based on Cambridge YLE 2023 Speaking Assessment Framework:
+//   Criterion 1 — Phoneme Accuracy Rate  (PAR): 40% weight
+//   Criterion 2 — Sentence Completion    (SCR): 30% weight  
+//   Criterion 3 — Fluency Ratio          (FR):  20% weight
+//   Criterion 4 — Level Calibration multiplier: applied to final score
+//
+// YLE Star bands (aligned with Cambridge Pass Thresholds):
+//   5⭐ Distinction: ≥ 90  (well above standard)
+//   4⭐ High Pass:   ≥ 75  (above standard)
+//   3⭐ Pass:        ≥ 60  (meets Cambridge YLE minimum — this IS the goal)
+//   2⭐ Near Miss:   ≥ 40  (needs targeted practice)
+//   1⭐ Pre-thresh:  < 40  (substantial remediation needed)
+
+const LEVEL_CALIBRATION: Record<string, number> = {
+  Starters: 1.00,  // Basic level — full credit
+  Movers:   0.95,  // Intermediate — slightly tighter expectations
+  Flyers:   0.88,  // Advanced — clear articulation and accuracy required
+};
+
+function yleScoreSpeech(
+  targetWords: string[],
+  spokenWords: string[],
+  level: string
+): {
+  score: number;
+  stars: number;
+  mispronouncedWords: string[];
+  criteria: { par: number; scr: number; fr: number };
+} {
+  if (targetWords.length === 0) {
+    return { score: 0, stars: 1, mispronouncedWords: [], criteria: { par: 0, scr: 0, fr: 0 } };
+  }
+
+  const tempSpoken = [...spokenWords];
+  const mispronouncedWords: string[] = [];
+  let exactMatches = 0;
+  let fuzzyMatches = 0;
+
+  for (const target of targetWords) {
+    const exactIdx = tempSpoken.indexOf(target);
+    if (exactIdx !== -1) {
+      tempSpoken.splice(exactIdx, 1);
+      exactMatches++;
+      continue;
+    }
+    let fuzzied = false;
+    for (let i = 0; i < tempSpoken.length; i++) {
+      if (fuzzyWordMatch(tempSpoken[i], target)) {
+        tempSpoken.splice(i, 1);
+        fuzzyMatches++;
+        fuzzied = true;
+        break;
+      }
+    }
+    if (!fuzzied) {
+      mispronouncedWords.push(target);
+    }
+  }
+
+  const totalWords = targetWords.length;
+  const correctCount = exactMatches + fuzzyMatches;
+
+  // Criterion 1: Phoneme Accuracy Rate — exact matches > fuzzy > miss
+  // Exact = 1.0 credit, fuzzy = 0.75 credit (near-miss penalty)
+  const par = (exactMatches * 1.0 + fuzzyMatches * 0.75) / totalWords;
+
+  // Criterion 2: Sentence Completion Rate — did the student attempt every word?
+  const attemptedCount = exactMatches + fuzzyMatches;
+  const scr = attemptedCount / totalWords;
+
+  // Criterion 3: Fluency Ratio — penalise excessive extra words or repetitions
+  const fr = Math.min(spokenWords.length, totalWords) / totalWords;
+
+  // Composite raw score
+  const rawScore = (par * 0.40 + scr * 0.30 + fr * 0.20) * 100;
+
+  // Apply level calibration
+  const multiplier = LEVEL_CALIBRATION[level] ?? 1.0;
+  const calibratedScore = Math.round(Math.min(rawScore * multiplier, 100));
+
+  // YLE-aligned star scale
+  let stars: number;
+  if (calibratedScore >= 90) stars = 5;
+  else if (calibratedScore >= 75) stars = 4;
+  else if (calibratedScore >= 60) stars = 3;  // Cambridge YLE Pass threshold
+  else if (calibratedScore >= 40) stars = 2;
+  else stars = 1;
+
+  return {
+    score: calibratedScore,
+    stars,
+    mispronouncedWords,
+    criteria: {
+      par: Math.round(par * 100),
+      scr: Math.round(scr * 100),
+      fr: Math.round(fr * 100),
+    },
+  };
+}
+
+// ─── AI Feedback Generator (Gemini) ──────────────────────────────────────────
 
 async function generateAIFeedback(
   sentence: string,
   spokenText: string,
   score: number,
   mispronouncedWords: string[],
-  level: string
+  level: string,
+  criteria: { par: number; scr: number; fr: number }
 ): Promise<{ tutorComment: string; tips: string; roadmap: string[] }> {
   try {
-    const completion = await mistral.chat.completions.create({
-      model: "mistral-small-latest",
-      messages: [
+    const wrongList =
+      mispronouncedWords.length > 0
+        ? mispronouncedWords.join(", ")
+        : "(không có — phát âm tốt!)";
+
+    // Map score to YLE band label for AI context
+    const yleBand =
+      score >= 90 ? "Distinction (Xuất sắc)"
+      : score >= 75 ? "High Pass (Đạt tốt)"
+      : score >= 60 ? "Pass (Đạt chuẩn YLE tối thiểu)"
+      : score >= 40 ? "Near Miss (Gần đạt — cần luyện thêm)"
+      : "Pre-Threshold (Chưa đạt — cần cải thiện đáng kể)";
+
+    const content = await callGemini(
+      [
         {
           role: "system",
-          content: `Bạn là cô giáo dạy Tiếng Anh tiểu học cực kỳ vui vẻ, thân thiện và giàu lòng yêu thương trẻ con (6-11 tuổi). 
-Nhiệm vụ của bạn là nhận xét bài nói của học sinh bằng Tiếng Việt. 
-Hãy động viên bé trước, khen ngợi sự cố gắng, sau đó nhắc nhở nhẹ nhàng về các từ phát âm sai.
-Cuối cùng, đề xuất 3 bài tập vui nhộn và siêu ngắn để bé sửa lỗi.
-Dùng nhiều emoji dễ thương 🌟🎉🎈🦁🐒🦛.
+          content: `Bạn là giám khảo Cambridge YLE có kinh nghiệm, đồng thời là cô giáo thân thiện với trẻ em (6-11 tuổi).
+Nhiệm vụ: Đánh giá bài nói Tiếng Anh theo chuẩn Cambridge YLE ${level} và viết nhận xét bằng Tiếng Việt.
 
-Bắt buộc trả về JSON ĐÚNG cấu trúc sau, KHÔNG thêm bất kỳ text nào khác:
+NGUYÊN TẮC QUAN TRỌNG:
+- Phản ánh TRUNG THỰC trình độ của bé theo chuẩn Cambridge — ba mẹ cần biết chính xác để hỗ trợ bé đúng cách.
+- Điểm đã được tính toán khoa học theo 4 tiêu chí YLE: Phoneme Accuracy (${criteria.par}%), Sentence Completion (${criteria.scr}%), Fluency (${criteria.fr}%), Level Calibration (${level}).
+- Bé đạt band: ${yleBand}
+- Nếu bé chưa đạt chuẩn (dưới 60%), hãy nói thật nhưng nhẹ nhàng và CHỈ RA CỤ THỂ từ nào cần luyện.
+- Nếu bé đạt chuẩn (từ 60% trở lên), khen ngợi thật lòng và gợi ý cải thiện thêm.
+- Giọng văn ấm áp, dùng emoji, nhưng nhận xét PHẢI chính xác và không thổi phồng thành tích.
+
+Bắt buộc trả về JSON ĐÚNG cấu trúc, KHÔNG thêm text bên ngoài:
 {
-  "tutorComment": "Lời nhận xét động viên (tối đa 3 câu, kèm emoji)",
-  "tips": "Cách luyện phát âm các từ bị sai cho bé (dễ hiểu, thân thiện)",
-  "roadmap": ["Bài tập nhỏ 1 vui nhộn...", "Bài tập nhỏ 2...", "Bài tập nhỏ 3..."]
+  "tutorComment": "Nhận xét phản ánh đúng kết quả (tối đa 3 câu, kèm emoji)",
+  "tips": "Hướng dẫn cụ thể để sửa lỗi phát âm (nếu có), hoặc gợi ý nâng cao (nếu đạt tốt)",
+  "roadmap": ["Bài tập nhỏ có mục tiêu rõ ràng 1...", "Bài tập 2...", "Bài tập 3..."]
 }`,
         },
         {
           role: "user",
-          content: `Bé vừa đọc câu: "${sentence}"
-Cấp độ: ${level}
-Bé thực tế đã nói: "${spokenText}"
-Điểm số: ${score}/100
-Các từ bé phát âm sai: [${mispronouncedWords.join(", ")}]
+          content: `Câu mục tiêu: "${sentence}"
+Cấp độ: ${level} | Điểm: ${score}/100 | Band: ${yleBand}
+Bé đã nói: "${spokenText}"
+Từ phát âm không khớp: [${wrongList}]
 
-Hãy tạo nhận xét và lộ trình cho bé.`,
+Hãy viết nhận xét phản ánh đúng trình độ và lộ trình cụ thể.`,
         },
       ],
-      response_format: { type: "json_object" },
-      max_tokens: 500,
-    });
+      { maxTokens: 520, responseFormat: "json_object" }
+    );
 
-    const content = completion.choices[0].message.content;
-    if (!content) {
-      throw new Error("Mistral trả về response rỗng");
-    }
-
-    console.log("🤖 [Mistral AI] Raw response:", content);
-
-    const parsed = JSON.parse(content);
+    console.log("🤖 [Gemini AI Speech] Raw response:", content);
+    const parsed = safeJsonParse<{ tutorComment: string; tips: string; roadmap: string[] }>(content);
 
     if (!parsed.tutorComment || !parsed.tips || !Array.isArray(parsed.roadmap)) {
-      throw new Error("JSON response không đúng cấu trúc");
+      throw new Error("JSON response có cấu trúc không đúng");
     }
 
     return {
@@ -76,56 +214,86 @@ Hãy tạo nhận xét và lộ trình cho bé.`,
       roadmap: parsed.roadmap.slice(0, 3),
     };
   } catch (err: any) {
-    console.error("❌ Lỗi gọi Mistral AI:", err.message);
+    console.error("❌ Lỗi gọi Gemini AI (speech):", err.message);
     return getFallbackFeedback(score, mispronouncedWords);
   }
 }
 
-function getFallbackFeedback(score: number, mispronouncedWords: string[]): { tutorComment: string; tips: string; roadmap: string[] } {
-  if (score < 30) {
+// ─── Static Fallback Feedback (YLE Band aligned) ─────────────────────────────
+
+function getFallbackFeedback(
+  score: number,
+  mispronouncedWords: string[]
+): { tutorComment: string; tips: string; roadmap: string[] } {
+  // Pre-Threshold: < 40 — or silent audio
+  if (score < 40) {
     return {
-      tutorComment: "Ồ! Cô chưa nghe rõ được giọng đọc đáng yêu của con. Con hãy bấm nút 'Thử thách lại' và nói to, rõ ràng hơn vào sát Mic nhé! 🎤🎈",
-      tips: "Hãy chắc chắn là con đã bấm nút cho phép sử dụng Microphone trên trình duyệt và nói thật to câu mẫu nhé.",
+      tutorComment:
+        "Ồ! Cô chưa nghe rõ được giọng đọc của con. Con hãy bấm lại và nói to, rõ ràng vào sát Mic nhé! 🎤🎈",
+      tips: "Hãy chắc chắn là Microphone đã được bật và nói thật to câu mẫu nhé.",
       roadmap: [
-        "Kiểm tra lại Microphone của máy tính hoặc điện thoại xem đã được bật chưa 🔌",
-        "Nghe lại audio mẫu của cô giáo AI 3 lần để làm quen giọng điệu 🎵",
-        "Bấm thử thách lại và dũng cảm nói thật to rõ từng chữ nhé bé yêu 💪"
-      ],
-    };
-  } else if (score >= 95) {
-    return {
-      tutorComment: "Wow! Con phát âm thật xuất sắc! Giọng của con siêu chuẩn và truyền cảm luôn đấy. Cô rất tự hào về con! 🎉🦁",
-      tips: "Con đã làm rất tốt. Hãy tiếp tục duy trì phong độ này ở các câu tiếp theo nhé!",
-      roadmap: [
-        "Luyện tập thêm 1 câu dài hơn thuộc cấp độ này để nhận thêm sao nhé! ⭐",
-        "Thu âm và gửi tặng ba mẹ nghe giọng đọc Tiếng Anh siêu đỉnh của con 🎁",
-        "Thử thách bản thân bằng cách tự kể một câu chuyện ngắn bằng Tiếng Anh 📚"
-      ],
-    };
-  } else if (score >= 70) {
-    const wrongWords = mispronouncedWords.length > 0 ? mispronouncedWords.join(", ") : "một vài từ nhỏ";
-    return {
-      tutorComment: "Con làm tốt lắm! Phát âm rất rõ ràng và trôi chảy. Chỉ cần chú ý sửa một chút xíu lỗi nhỏ nữa là đạt 5 sao luôn nè! 🌟🐒",
-      tips: `Từ "${wrongWords}" con đọc gần đúng rồi, chỉ cần chú ý nhấn rõ hơi hoặc bật âm đuôi (ending sound) rõ hơn nữa nhé.`,
-      roadmap: [
-        `Nghe lại từ mẫu "${mispronouncedWords[0] || "từ khó"}" và lặp lại 3 lần thật to trước gương 🪞`,
-        `Chơi trò chơi 'Bật âm đuôi' - luyện đọc từ "${mispronouncedWords[0] || "từ khó"}" thật gió 🌬️`,
-        `Thử thách đọc lại cả câu này lần thứ hai để chinh phục trọn vẹn 5 sao vàng 🏆`
-      ],
-    };
-  } else {
-    const wrongWords = mispronouncedWords.length > 0 ? mispronouncedWords.join(", ") : "các từ khó";
-    return {
-      tutorComment: "Cô khen ngợi tinh thần cố gắng tuyệt vời của con! Con đã rất dũng cảm khi nói Tiếng Anh thật to. Hãy cùng cô luyện tập thêm nhé! 🦛🎈",
-      tips: `Hãy lắng nghe thật kỹ cách phát âm của các từ "${wrongWords}" và bật hơi mạnh hơn nhé bé yêu.`,
-      roadmap: [
-        `Luyện đọc chậm rãi từ "${mispronouncedWords[0] || "từ khó"}" cùng cô giáo AI 👩‍🏫`,
-        `Tham gia thử thách nói từ vựng "${mispronouncedWords[0] || "từ khó"}" chậm rãi 3 lần liên tiếp 🐢`,
-        `Nghe audio mẫu của câu này và nhại giọng theo thật vui nhộn 🎵`
+        "Kiểm tra Microphone đã bật chưa 🔌",
+        "Nghe lại audio mẫu của cô giáo AI 3 lần trước khi đọc 🎵",
+        "Bấm thử thách lại và nói thật to rõ từng chữ nhé 💪",
       ],
     };
   }
+  // Distinction: ≥ 90
+  if (score >= 90) {
+    return {
+      tutorComment:
+        "Xuất sắc! Con phát âm đạt chuẩn Distinction Cambridge — giọng chuẩn, rõ ràng, trôi chảy! Cô rất tự hào! 🎉🦁",
+      tips: "Con đã đạt band cao nhất. Hãy tiếp tục thử câu dài hơn hoặc cấp độ khó hơn!",
+      roadmap: [
+        "Thử câu dài hơn ở cấp độ tương đương để giữ phong độ ⭐",
+        "Thu âm câu này gửi cho ba mẹ cùng tự hào 🎁",
+        "Thử thách bản thân với cấp độ cao hơn (Movers → Flyers) 📚",
+      ],
+    };
+  }
+  // High Pass: 75-89
+  if (score >= 75) {
+    const wrongWords = mispronouncedWords.length > 0 ? mispronouncedWords.join(", ") : "một vài từ nhỏ";
+    return {
+      tutorComment:
+        "High Pass! Con phát âm rất tốt — đạt trên chuẩn YLE. Sửa thêm một chút là Distinction luôn! 🌟🐒",
+      tips: `Từ "${wrongWords}" con đọc gần đúng, hãy chú ý nhấn rõ âm đuôi (ending sound) và hơi thở.`,
+      roadmap: [
+        `Tập đọc chậm từng từ "${mispronouncedWords[0] || "từ khó"}" trước gương 3 lần 🪞`,
+        "Luyện nhấn ending sounds: -s, -ed, -ing thật rõ 🌬️",
+        "Đọc lại câu này để lên Distinction nhé! 🏆",
+      ],
+    };
+  }
+  // Pass: 60-74 (YLE minimum threshold)
+  if (score >= 60) {
+    const wrongWords = mispronouncedWords.length > 0 ? mispronouncedWords.join(", ") : "một số từ";
+    return {
+      tutorComment:
+        "Pass! Con đã vượt qua ngưỡng tối thiểu Cambridge YLE 🎈 Hãy luyện thêm để lên High Pass nhé!",
+      tips: `Cần cải thiện phát âm các từ: "${wrongWords}". Hãy nghe kỹ mẫu và tập nhại từng âm tiết.`,
+      roadmap: [
+        `Luyện phát âm từng âm tiết của "${mispronouncedWords[0] || "từ khó"}" theo mẫu AI 🎙️`,
+        "Nghe audio mẫu và dừng lại ở từng từ khó, nhại theo 🔁",
+        "Thử thách đọc lại toàn câu để nâng từ Pass lên High Pass 🌟",
+      ],
+    };
+  }
+  // Near Miss: 40-59
+  const wrongWords = mispronouncedWords.length > 0 ? mispronouncedWords.join(", ") : "các từ khó";
+  return {
+    tutorComment:
+      "Cô khen bé đã dũng cảm thử sức! Nhưng bé cần luyện thêm để đạt chuẩn Pass YLE (60%). Đừng nản nhé! 🦛🎈",
+    tips: `Các từ "${wrongWords}" cần được luyện kỹ hơn — tập phát âm chậm từng âm tiết trước.`,
+    roadmap: [
+      `Luyện đọc chậm từng âm tiết "${mispronouncedWords[0] || "từ khó"}" cùng cô giáo AI 👩‍🏫`,
+      `Nghe và nhại theo audio mẫu câu này ít nhất 5 lần 🐢`,
+      "Bấm thử thách lại sau khi đã luyện — con sẽ tiến bộ rõ rệt 💪",
+    ],
+  };
 }
+
+// ─── POST Handler ─────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
   try {
@@ -150,8 +318,13 @@ export async function POST(req: NextRequest) {
     const audioBuffer = Buffer.from(await audioFile.arrayBuffer());
     const audioSize = audioBuffer.length;
 
+    // Short audio → likely didn't speak
     if (audioSize < 6000) {
-      const targetWords = sentence.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "").toLowerCase().split(/\s+/).filter(Boolean);
+      const targetWords = sentence
+        .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "")
+        .toLowerCase()
+        .split(/\s+/)
+        .filter(Boolean);
       const fallbackFeedback = getFallbackFeedback(0, targetWords);
 
       return NextResponse.json({
@@ -169,50 +342,43 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // 1. Transcribe with Groq Whisper
     const file = new File([audioBuffer], "audio.webm", { type: "audio/webm" });
-
     const transcription = await groq.audio.transcriptions.create({
       model: "whisper-large-v3",
       file: file,
       language: "en",
     });
-
     const spokenText = (transcription.text || "").trim();
     console.log(`📝 [Groq Whisper] Transcribed text: "${spokenText}"`);
 
-    const cleanedSentence = sentence.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "").toLowerCase();
+    // 2. Score with YLE multi-criteria algorithm
+    const cleanedSentence = sentence
+      .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "")
+      .toLowerCase();
     const targetWords = cleanedSentence.split(/\s+/).filter(Boolean);
-    const cleanedSpoken = spokenText.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "").toLowerCase();
+
+    const cleanedSpoken = spokenText
+      .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "")
+      .toLowerCase();
     const spokenWords = cleanedSpoken.split(/\s+/).filter(Boolean);
 
-    const tempSpoken = [...spokenWords];
-    const mispronouncedWords: string[] = [];
+    const { score, stars, mispronouncedWords, criteria } = yleScoreSpeech(targetWords, spokenWords, level);
+    console.log(`🎯 [YLE Scorer] Score: ${score}/100 | Stars: ${stars} | PAR: ${criteria.par}% | SCR: ${criteria.scr}% | FR: ${criteria.fr}% | Wrong: [${mispronouncedWords.join(", ")}]`);
 
-    targetWords.forEach((word) => {
-      const index = tempSpoken.indexOf(word);
-      if (index !== -1) {
-        tempSpoken.splice(index, 1);
-      } else {
-        mispronouncedWords.push(word);
-      }
-    });
-
-    const totalCount = targetWords.length;
-    const correctCount = totalCount - mispronouncedWords.length;
-    const score = Math.round((correctCount / totalCount) * 100);
-
-    let stars = 5;
-    if (score >= 95) stars = 5;
-    else if (score >= 85) stars = 5;
-    else if (score >= 70) stars = 4;
-    else if (score >= 45) stars = 3;
-    else if (score >= 20) stars = 2;
-    else stars = 1;
-
-    console.log(`🧠 [AI Feedback] Đang gọi Mistral AI sinh nhận xét...`);
-    const aiFeedback = await generateAIFeedback(sentence, spokenText, score, mispronouncedWords, level);
+    // 3. Generate AI feedback
+    console.log(`🧠 [AI Feedback] Đang gọi Gemini AI sinh nhận xét...`);
+    const aiFeedback = await generateAIFeedback(
+      sentence,
+      spokenText,
+      score,
+      mispronouncedWords,
+      level,
+      criteria
+    );
     console.log(`✅ [AI Feedback] Nhận xét:`, aiFeedback);
 
+    // 4. Save to database
     const assessmentData = {
       userId: DEFAULT_USER_ID,
       level,

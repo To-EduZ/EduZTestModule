@@ -55,6 +55,40 @@ body {
   color: #e2e8f0;
 }
 
+/* ─── Chart Theme CSS Custom Properties ─────────────────────────────────── */
+:root {
+  --chart-grid: #e2e8f0;
+  --chart-text: #64748b;
+  --chart-text-strong: #334155;
+  --chart-axis: #cbd5e1;
+  --chart-tooltip-bg: rgba(15, 23, 42, 0.92);
+  --chart-tooltip-text: #f8fafc;
+  --chart-tooltip-subtext: #94a3b8;
+  --chart-empty-bg: #f8fafc;
+  --chart-radar-grid: #e2e8f0;
+  --chart-radar-outer: #cbd5e1;
+  --chart-radar-spoke: #d1d5db;
+  --chart-radar-label: #334155;
+  --chart-radar-score-label: #94a3b8;
+}
+
+:where(.dark) {
+  --chart-grid: #334155;
+  --chart-text: #94a3b8;
+  --chart-text-strong: #e2e8f0;
+  --chart-axis: #475569;
+  --chart-tooltip-bg: rgba(241, 245, 249, 0.96);
+  --chart-tooltip-text: #0f172a;
+  --chart-tooltip-subtext: #475569;
+  --chart-empty-bg: rgba(30, 41, 59, 0.5);
+  --chart-radar-grid: #334155;
+  --chart-radar-outer: #475569;
+  --chart-radar-spoke: #3b4a60;
+  --chart-radar-label: #e2e8f0;
+  --chart-radar-score-label: #64748b;
+}
+
+
 /* Duolingo-style 3D tactile buttons */
 .btn-3d-yellow {
   position: relative;

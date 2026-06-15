@@ -61,6 +61,12 @@ export async function GET(req: NextRequest) {
     if (className) userMatchStage.$match["userInfo.className"] = className;
     if (studentId) userMatchStage.$match["userId"] = studentId;
 
+    // Pagination parameters
+    const page = parseInt(searchParams.get("page") || "1");
+    const limit = parseInt(searchParams.get("limit") || "20");
+    const search = searchParams.get("search") || "";
+    const skip = (page - 1) * limit;
+
     let pipeline: any[] = [];
 
     // Grouping logic based on groupBy parameter
@@ -130,7 +136,11 @@ export async function GET(req: NextRequest) {
         { $sort: { date: 1 } }
       ];
     } else {
-      // Summary mode: Top level stats + Top students
+      // Summary mode: Top level stats + Paginated Top students using $facet
+      const searchMatchStage = search 
+        ? [{ $match: { name: { $regex: search, $options: "i" } } }] 
+        : [];
+
       const summaryPipeline = [
         { $match: dateMatch },
         lookupStage,
@@ -146,23 +156,46 @@ export async function GET(req: NextRequest) {
             testsTaken: { $sum: 1 }
           }
         },
-        { $sort: { avgScore: -1 } }
+        {
+          $facet: {
+            stats: [
+              {
+                $group: {
+                  _id: null,
+                  totalStudents: { $sum: 1 },
+                  totalTests: { $sum: "$testsTaken" },
+                  sumAvgScore: { $sum: "$avgScore" }
+                }
+              }
+            ],
+            studentsList: [
+              ...searchMatchStage,
+              { $sort: { avgScore: -1 } },
+              { $skip: skip },
+              { $limit: limit + 1 }
+            ]
+          }
+        }
       ];
 
-      const results = await AssessmentResult.aggregate(summaryPipeline);
-      
-      const totalTests = results.reduce((sum, r) => sum + r.testsTaken, 0);
-      const avgOverallScore = results.length > 0 
-        ? results.reduce((sum, r) => sum + r.avgScore, 0) / results.length 
-        : 0;
-        
+      const facetResult = await AssessmentResult.aggregate(summaryPipeline);
+      const resultData = facetResult[0];
+
+      const stats = resultData.stats[0] || { totalStudents: 0, totalTests: 0, sumAvgScore: 0 };
+      const avgOverallScore = stats.totalStudents > 0 ? stats.sumAvgScore / stats.totalStudents : 0;
+
+      const fetchedStudents = resultData.studentsList || [];
+      const hasMore = fetchedStudents.length > limit;
+      const studentsToReturn = hasMore ? fetchedStudents.slice(0, limit) : fetchedStudents;
+
       return NextResponse.json({
         success: true,
+        hasMore,
         summary: {
-          totalStudents: results.length,
-          totalTests,
+          totalStudents: stats.totalStudents,
+          totalTests: stats.totalTests,
           avgOverallScore: Math.round(avgOverallScore),
-          topStudents: results.slice(0, 10).map(r => ({
+          topStudents: studentsToReturn.map((r: any) => ({
             id: r._id,
             name: r.name,
             school: r.school,

@@ -57,17 +57,38 @@ export default function AnalyticsDashboard() {
   const [barChartMode, setBarChartMode] = useState<"class" | "school">("class");
   const [barData, setBarData] = useState<ChartDataPoint[]>([]);
   
-  // Student Detail State
+  // Student Detail State & Lazy Loading
   const [searchStudentTerm, setSearchStudentTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [studentTimeline, setStudentTimeline] = useState<ChartDataPoint[]>([]);
   const [classAverageData, setClassAverageData] = useState<number[]>([0, 0, 0, 0]);
 
+  const [studentsList, setStudentsList] = useState<any[]>([]);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const observerTarget = React.useRef<HTMLDivElement>(null);
+  const isFirstMount = React.useRef(true);
+
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchStudentTerm);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchStudentTerm]);
+
   // Initial Fetch & Apply Filters
-  const fetchSummary = async () => {
+  const fetchSummary = async (isLoadMore = false, currentPage = 1, currentSearch = debouncedSearchTerm) => {
     try {
+      if (isLoadMore) setIsLoadingMore(true);
+
       const url = new URL("/api/analytics/aggregate", window.location.origin);
       url.searchParams.append("groupBy", "summary");
+      url.searchParams.append("page", currentPage.toString());
+      url.searchParams.append("limit", "20");
+      if (currentSearch) url.searchParams.append("search", currentSearch);
       if (selectedSchool) url.searchParams.append("school", selectedSchool);
       if (selectedClass) url.searchParams.append("className", selectedClass);
       if (startDate) url.searchParams.append("from", startDate);
@@ -76,14 +97,21 @@ export default function AnalyticsDashboard() {
       const res = await fetch(url.toString());
       const data = await res.json();
       if (data.success) {
-        setSummary(data.summary);
-        // Also auto-select the top student for the detail view if none selected
-        if (!selectedStudent && data.summary.topStudents.length > 0) {
-          selectStudentForDetail(data.summary.topStudents[0]);
+        if (isLoadMore) {
+          setStudentsList(prev => [...prev, ...data.summary.topStudents]);
+        } else {
+          setSummary(data.summary);
+          setStudentsList(data.summary.topStudents);
+          if (!selectedStudent && data.summary.topStudents.length > 0) {
+            selectStudentForDetail(data.summary.topStudents[0]);
+          }
         }
+        setHasMore(data.hasMore);
       }
     } catch (e) {
       console.error(e);
+    } finally {
+      if (isLoadMore) setIsLoadingMore(false);
     }
   };
 
@@ -158,8 +186,9 @@ export default function AnalyticsDashboard() {
 
   const handleApplyFilters = async () => {
     setIsApplying(true);
+    setPage(1);
     const promises: Promise<any>[] = [
-      fetchSummary(),
+      fetchSummary(false, 1, debouncedSearchTerm),
       fetchBarData(barChartMode)
     ];
     if (selectedStudent) {
@@ -168,6 +197,38 @@ export default function AnalyticsDashboard() {
     await Promise.all(promises);
     setIsApplying(false);
   };
+
+  useEffect(() => {
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      return;
+    }
+    setPage(1);
+    fetchSummary(false, 1, debouncedSearchTerm);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearchTerm]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting && hasMore && !isLoadingMore) {
+          const nextPage = page + 1;
+          setPage(nextPage);
+          fetchSummary(true, nextPage, debouncedSearchTerm);
+        }
+      },
+      { threshold: 0.1 }
+    );
+    
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
+    
+    return () => {
+      if (observerTarget.current) observer.unobserve(observerTarget.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasMore, isLoadingMore, page, debouncedSearchTerm]);
 
   useEffect(() => {
     handleApplyFilters();
@@ -350,12 +411,10 @@ export default function AnalyticsDashboard() {
               </div>
             </div>
             
-            <div className="flex-1 overflow-y-auto max-h-[500px] p-2 custom-scrollbar">
-              {summary?.topStudents
-                .filter(s => s.name.toLowerCase().includes(searchStudentTerm.toLowerCase()))
-                .map((student, idx) => (
+            <div className="flex-1 overflow-y-auto max-h-[500px] lg:max-h-[750px] min-h-0 p-2 custom-scrollbar">
+              {studentsList.map((student, idx) => (
                 <button
-                  key={student.id}
+                  key={`${student.id}-${idx}`}
                   onClick={() => selectStudentForDetail(student)}
                   className={`w-full text-left flex items-center gap-3 p-3 rounded-xl transition-all ${selectedStudent?.id === student.id ? "bg-indigo-50 dark:bg-indigo-900/20 border-indigo-100 dark:border-indigo-800" : "hover:bg-slate-50 dark:hover:bg-slate-800/50"} border border-transparent`}
                 >
@@ -372,6 +431,11 @@ export default function AnalyticsDashboard() {
                   </div>
                 </button>
               ))}
+              
+              {/* Observer Target for Infinite Scroll */}
+              <div ref={observerTarget} className="h-6 w-full flex items-center justify-center mt-2 mb-2">
+                {isLoadingMore && <div className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>}
+              </div>
             </div>
           </div>
 
