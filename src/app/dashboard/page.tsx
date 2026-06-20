@@ -504,7 +504,7 @@ export default function AnalyticsDashboard() {
                       currentData={radarCurrent}
                       labels={["Nói", "Nghe", "Đọc", "Viết"]}
                       size={320}
-                      colors={{ base: "#64748b", current: "#f43f5e" }}
+                      colors={{ base: "#818cf8", current: "#FF4B8B" }}
                       baseLabel="Trung bình lớp"
                       currentLabel="Học viên"
                     />

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { Sparkles, BarChart3, Mic, Upload, Activity } from "lucide-react";
+import { Sparkles, BarChart3, Mic, Upload } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 
 export default function Dashboard() {
@@ -150,25 +150,25 @@ export default function Dashboard() {
             </Link>
           </section>
 
-          {/* Adaptive Test */}
+          {/* Cambridge YLE Test */}
           <section className="relative overflow-hidden backdrop-blur-md bg-white/70 dark:bg-slate-900/70 border border-slate-200/50 dark:border-slate-800 rounded-3xl p-6 shadow-lg flex flex-col justify-between group hover:-translate-y-1 transition-all">
             <div>
-              <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] md:text-xs font-black uppercase tracking-wider px-3.5 py-1.5 rounded-full border border-emerald-500/20 inline-flex items-center gap-1.5 mb-4 shadow-sm">
-                <Activity className="w-3.5 h-3.5" />
-                Kiểm tra thích ứng (CAT)
+              <span className="bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] md:text-xs font-black uppercase tracking-wider px-3.5 py-1.5 rounded-full border border-amber-500/20 inline-flex items-center gap-1.5 mb-4 shadow-sm">
+                <BarChart3 className="w-3.5 h-3.5" />
+                Cambridge Young Learners
               </span>
               <h3 className="text-xl md:text-2xl font-black text-slate-850 dark:text-slate-100 leading-tight mb-2">
-                Bài Test Thích Ứng 🎯
+                Bài Test Cambridge YLE 🏆
               </h3>
               <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 leading-relaxed mb-6">
-                Thuật toán tinh chỉnh câu hỏi tự động dựa trên câu trả lời trước đó, giúp xác định đúng trình độ chỉ trong thời gian ngắn.
+                Đánh giá trình độ theo chuẩn Cambridge với 30 câu hỏi (Language Use + Listening). Xếp loại CEFR từ Pre-A1 đến B1.
               </p>
             </div>
             
-            <Link href="/adaptive-test" className="w-full relative z-10">
-              <button className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white rounded-2xl px-6 py-4 font-black tracking-wider uppercase flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 transition-all shadow-lg hover:shadow-emerald-500/20 text-sm cursor-pointer border-b-4 border-teal-800">
-                <Activity className="w-4 h-4 animate-pulse" />
-                Mở Module Thích Ứng
+            <Link href="/cambridge-test" className="w-full relative z-10">
+              <button className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white rounded-2xl px-6 py-4 font-black tracking-wider uppercase flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 transition-all shadow-lg hover:shadow-amber-500/20 text-sm cursor-pointer border-b-4 border-orange-800">
+                <BarChart3 className="w-4 h-4 animate-pulse" />
+                Mở Bài Test Cambridge
               </button>
             </Link>
           </section>

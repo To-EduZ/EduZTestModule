@@ -20,10 +20,10 @@ type Skill = "speaking" | "listening" | "reading" | "writing";
 const SKILLS: Skill[] = ["speaking", "listening", "reading", "writing"];
 
 const COLORS: Record<Skill, { line: string; area: string; dot: string }> = {
-  speaking: { line: "#3b82f6", area: "rgba(59,130,246,0.10)", dot: "#2563eb" },
-  listening: { line: "#10b981", area: "rgba(16,185,129,0.10)", dot: "#047857" },
-  reading: { line: "#f59e0b", area: "rgba(245,158,11,0.10)", dot: "#b45309" },
-  writing: { line: "#8b5cf6", area: "rgba(139,92,246,0.10)", dot: "#6d28d9" },
+  speaking: { line: "#00A2FF", area: "rgba(0,162,255,0.15)", dot: "#007BB5" },
+  listening: { line: "#00D084", area: "rgba(0,208,132,0.15)", dot: "#00A368" },
+  reading: { line: "#FFC800", area: "rgba(255,200,0,0.15)", dot: "#E0A800" },
+  writing: { line: "#A855F7", area: "rgba(168,85,247,0.15)", dot: "#8235BF" },
 };
 
 const LABELS: Record<Skill, string> = {

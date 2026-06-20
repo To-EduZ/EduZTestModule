@@ -1,5 +1,15 @@
 import { callGemini, safeJsonParse } from "@/lib/geminiClient";
-import { IAdaptiveSession } from "@/models/AdaptiveSession";
+// Inline type for session data (AdaptiveSession model was removed)
+interface SessionData {
+  finalScores?: {
+    overall?: number;
+    vocabulary?: number;
+    grammar?: number;
+    pronunciation?: number;
+    fluency?: number;
+  };
+  finalLevel?: string;
+}
 import OpenAI from "openai";
 
 // Groq client is kept for Whisper audio transcription only
@@ -76,7 +86,7 @@ Return ONLY valid JSON: {"score": integer 0-100, "isCorrect": boolean (true if B
 // ─── Parent Recommendation Generator ─────────────────────────────────────────
 
 export async function generateParentRecommendation(
-  sessionData: Partial<IAdaptiveSession>
+  sessionData: SessionData
 ): Promise<string> {
   try {
     const overall = sessionData.finalScores?.overall || 0;

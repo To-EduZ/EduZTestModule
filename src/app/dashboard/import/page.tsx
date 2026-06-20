@@ -787,8 +787,6 @@ export default function CambridgeImportPage() {
   return (
     <div className="w-full min-h-screen pb-20 relative bg-pastel-bg dark:bg-dark-bg flex flex-col font-sans">
       {/* Decorative Bubble Backgrounds */}
-      <div className="bubble-bg top-24 left-10 w-24 h-24 animate-float" style={{ animationDelay: "1s" }} />
-      <div className="bubble-bg bottom-16 right-16 w-28 h-28 animate-float" style={{ animationDelay: "3s" }} />
 
       {/* Navigation Header */}
       <header className="w-full bg-white dark:bg-slate-900 border-b-4 border-slate-100 dark:border-slate-700 py-3 md:py-4 px-3 md:px-4 sticky top-0 z-30 shadow-sm">
