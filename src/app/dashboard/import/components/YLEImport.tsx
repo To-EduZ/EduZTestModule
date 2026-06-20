@@ -285,11 +285,11 @@ export default function YLEImport() {
             <h3 className="text-sm font-black text-amber-800 mb-2 flex items-center gap-2">
               <Sparkles className="w-4 h-4" /> Dùng AI Phân Tích Đề Bài
             </h3>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
               <input 
                 type="file" 
                 accept="image/*,application/pdf"
-                className="text-sm flex-1 bg-white dark:bg-slate-800 p-2 rounded-xl border-2"
+                className="text-sm flex-1 bg-white dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 p-2 rounded-xl border-2 overflow-hidden text-ellipsis"
                 onChange={e => setAnalyzeImageFile(e.target.files?.[0] || null)}
                 ref={analyzeInputRef}
               />
@@ -309,7 +309,7 @@ export default function YLEImport() {
         {/* FORM */}
         <div className="bg-white dark:bg-slate-900 rounded-3xl border-4 border-slate-200 p-6 shadow-lg">
           <div className="flex justify-between items-center mb-6">
-            <h3 className="text-lg font-black text-slate-800">
+            <h3 className="text-lg font-black text-slate-800 dark:text-slate-200">
               {isEditing ? `📝 Sửa câu hỏi: ${qId}` : "➕ Thêm câu hỏi YLE mới"}
             </h3>
             {isEditing && (
@@ -321,11 +321,11 @@ export default function YLEImport() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-black text-slate-500 mb-1">Mã câu hỏi (ID) *</label>
-                <input required value={qId} onChange={e => setQId(e.target.value)} disabled={isEditing} className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-4 py-2.5 font-bold" placeholder="VD: LU_P1_01" />
+                <input required value={qId} onChange={e => setQId(e.target.value)} disabled={isEditing} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 dark:text-slate-100 rounded-xl px-4 py-2.5 font-bold" placeholder="VD: LU_P1_01" />
               </div>
               <div>
                 <label className="block text-xs font-black text-slate-500 mb-1">Section *</label>
-                <select value={section} onChange={e => setSection(e.target.value as any)} className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-4 py-2.5 font-bold">
+                <select value={section} onChange={e => setSection(e.target.value as any)} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 dark:text-slate-100 rounded-xl px-4 py-2.5 font-bold">
                   <option value="language-use">Language Use</option>
                   <option value="listening">Listening</option>
                 </select>
@@ -335,22 +335,22 @@ export default function YLEImport() {
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs font-black text-slate-500 mb-1">Part *</label>
-                <input required type="number" value={part} onChange={e => setPart(e.target.value)} className="w-full bg-slate-50 border-2 rounded-xl px-3 py-2 font-bold" />
+                <input required type="number" value={part} onChange={e => setPart(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 dark:text-slate-100 rounded-xl px-3 py-2 font-bold" />
               </div>
               <div>
                 <label className="block text-xs font-black text-slate-500 mb-1">Task No. *</label>
-                <input required type="number" value={taskNumber} onChange={e => setTaskNumber(e.target.value)} className="w-full bg-slate-50 border-2 rounded-xl px-3 py-2 font-bold" />
+                <input required type="number" value={taskNumber} onChange={e => setTaskNumber(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 dark:text-slate-100 rounded-xl px-3 py-2 font-bold" />
               </div>
               <div>
                 <label className="block text-xs font-black text-slate-500 mb-1">Ques in Task *</label>
-                <input required type="number" value={questionNumberInTask} onChange={e => setQuestionNumberInTask(e.target.value)} className="w-full bg-slate-50 border-2 rounded-xl px-3 py-2 font-bold" />
+                <input required type="number" value={questionNumberInTask} onChange={e => setQuestionNumberInTask(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 dark:text-slate-100 rounded-xl px-3 py-2 font-bold" />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-black text-slate-500 mb-1">Dạng bài (Type) *</label>
-                <select value={type} onChange={e => setType(e.target.value)} className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-4 py-2.5 font-bold">
+                <select value={type} onChange={e => setType(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 dark:text-slate-100 rounded-xl px-4 py-2.5 font-bold">
                   <option value="dialogue-mcq">Dialogue MCQ (LU P1,P2)</option>
                   <option value="gapped-text">Gapped Text (LU P3)</option>
                   <option value="listening-image">Listening Image (L P1)</option>
@@ -360,7 +360,7 @@ export default function YLEImport() {
               </div>
               <div>
                 <label className="block text-xs font-black text-slate-500 mb-1">Testing Focus *</label>
-                <input required value={testingFocus} onChange={e => setTestingFocus(e.target.value)} className="w-full bg-slate-50 border-2 rounded-xl px-3 py-2 font-bold" placeholder="VD: Lexis, Grammar" />
+                <input required value={testingFocus} onChange={e => setTestingFocus(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 dark:text-slate-100 rounded-xl px-3 py-2 font-bold" placeholder="VD: Lexis, Grammar" />
               </div>
             </div>
 
@@ -368,7 +368,7 @@ export default function YLEImport() {
             {type === "dialogue-mcq" && (
               <div>
                 <label className="block text-xs font-black text-slate-500 mb-1">Dialogue</label>
-                <textarea value={dialogue} onChange={e => setDialogue(e.target.value)} rows={2} className="w-full bg-slate-50 border-2 rounded-xl px-3 py-2 font-bold" placeholder="A: Hello _____ \nB: Hi" />
+                <textarea value={dialogue} onChange={e => setDialogue(e.target.value)} rows={2} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 dark:text-slate-100 rounded-xl px-3 py-2 font-bold" placeholder="A: Hello _____ \nB: Hi" />
               </div>
             )}
             
@@ -376,11 +376,11 @@ export default function YLEImport() {
               <div className="grid grid-cols-3 gap-4">
                 <div className="col-span-2">
                   <label className="block text-xs font-black text-slate-500 mb-1">Passage</label>
-                  <textarea value={passage} onChange={e => setPassage(e.target.value)} rows={2} className="w-full bg-slate-50 border-2 rounded-xl px-3 py-2 font-bold" placeholder="I like __(1)__" />
+                  <textarea value={passage} onChange={e => setPassage(e.target.value)} rows={2} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 dark:text-slate-100 rounded-xl px-3 py-2 font-bold" placeholder="I like __(1)__" />
                 </div>
                 <div>
                   <label className="block text-xs font-black text-slate-500 mb-1">Gap Label</label>
-                  <input value={gapLabel} onChange={e => setGapLabel(e.target.value)} className="w-full bg-slate-50 border-2 rounded-xl px-3 py-2 font-bold" placeholder="(1)" />
+                  <input value={gapLabel} onChange={e => setGapLabel(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 dark:text-slate-100 rounded-xl px-3 py-2 font-bold" placeholder="(1)" />
                 </div>
               </div>
             )}
@@ -388,23 +388,23 @@ export default function YLEImport() {
             {section === "listening" && (
               <div>
                 <label className="block text-xs font-black text-slate-500 mb-1">Audio Text (TTS)</label>
-                <textarea value={audioText} onChange={e => setAudioText(e.target.value)} rows={2} className="w-full bg-slate-50 border-2 rounded-xl px-3 py-2 font-bold" placeholder="Kịch bản nghe..." />
+                <textarea value={audioText} onChange={e => setAudioText(e.target.value)} rows={2} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 dark:text-slate-100 rounded-xl px-3 py-2 font-bold" placeholder="Kịch bản nghe..." />
               </div>
             )}
 
             <div>
               <label className="block text-xs font-black text-slate-500 mb-1">Câu hỏi (Question Text) *</label>
-              <input required value={questionText} onChange={e => setQuestionText(e.target.value)} className="w-full bg-slate-50 border-2 rounded-xl px-3 py-2 font-bold" placeholder="VD: Chọn từ thích hợp điền vào chỗ trống" />
+              <input required value={questionText} onChange={e => setQuestionText(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 dark:text-slate-100 rounded-xl px-3 py-2 font-bold" placeholder="VD: Chọn từ thích hợp điền vào chỗ trống" />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-black text-slate-500 mb-1">Options (Cách nhau dấu phẩy) *</label>
-                <input required value={options} onChange={e => setOptions(e.target.value)} className="w-full bg-slate-50 border-2 rounded-xl px-3 py-2 font-bold" placeholder="A, B, C" />
+                <input required value={options} onChange={e => setOptions(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 dark:text-slate-100 rounded-xl px-3 py-2 font-bold" placeholder="A, B, C" />
               </div>
               <div>
                 <label className="block text-xs font-black text-slate-500 mb-1">Correct Answer *</label>
-                <input required value={correctAnswer} onChange={e => setCorrectAnswer(e.target.value)} className="w-full bg-emerald-50 border-2 border-emerald-200 text-emerald-800 rounded-xl px-3 py-2 font-bold" placeholder="VD: A" />
+                <input required value={correctAnswer} onChange={e => setCorrectAnswer(e.target.value)} className="w-full bg-emerald-50 dark:bg-emerald-900/30 border-2 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 rounded-xl px-3 py-2 font-bold" placeholder="VD: A" />
               </div>
             </div>
             
@@ -447,7 +447,7 @@ export default function YLEImport() {
         {/* LIST */}
         <div className="bg-white dark:bg-slate-900 rounded-3xl border-4 border-slate-200 p-6 shadow-lg max-h-[800px] flex flex-col">
           <div className="flex justify-between items-center mb-4 shrink-0">
-            <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
+            <h3 className="text-lg font-black text-slate-800 dark:text-slate-200 flex items-center gap-2">
               <Database className="w-5 h-5" /> Ngân Hàng YLE ({questions.length})
             </h3>
             <button onClick={fetchQuestions} className="p-2 text-slate-400 hover:text-indigo-500 bg-slate-100 rounded-full">
@@ -462,7 +462,7 @@ export default function YLEImport() {
               <p className="text-center text-slate-400 py-10 font-bold">Chưa có câu hỏi YLE nào.</p>
             ) : (
               questions.map(q => (
-                <div key={q.id} className="border-2 border-slate-100 p-3 rounded-2xl hover:border-indigo-200 bg-slate-50">
+                <div key={q.id} className="border-2 border-slate-100 dark:border-slate-700 p-3 rounded-2xl hover:border-indigo-200 dark:hover:border-indigo-500 bg-slate-50 dark:bg-slate-800">
                   <div className="flex justify-between items-start mb-2">
                     <div>
                       <span className="font-black text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded-md text-xs">{q.id}</span>
@@ -473,7 +473,7 @@ export default function YLEImport() {
                       <button onClick={() => handleDelete(q.id)} className="p-1.5 text-red-500 bg-red-50 rounded-lg hover:bg-red-100"><Trash2 className="w-3.5 h-3.5" /></button>
                     </div>
                   </div>
-                  <p className="text-sm font-bold text-slate-700 line-clamp-2">{q.questionText}</p>
+                  <p className="text-sm font-bold text-slate-700 dark:text-slate-200 line-clamp-2">{q.questionText}</p>
                   <p className="text-xs font-semibold text-slate-500 mt-1 line-clamp-1">Type: {q.type} | Ans: <span className="text-emerald-600">{q.correctAnswer}</span></p>
                 </div>
               ))
