@@ -165,8 +165,7 @@ export default function AudioRecorder({
       const height = canvas.height;
 
       ctx.clearRect(0, 0, width, height);
-      ctx.fillStyle = "rgba(250, 248, 245, 0.8)";
-      ctx.fillRect(0, 0, width, height);
+      
 
       const barWidth = (width / bufferLength) * 2.5;
       let barHeight;
@@ -208,30 +207,30 @@ export default function AudioRecorder({
   };
 
   return (
-    <div className="w-full flex flex-col items-center justify-center p-6 bg-white rounded-3xl border-4 border-amber-200/60 shadow-xl relative overflow-hidden">
+    <div className="w-full flex flex-col items-center justify-center p-4 md:p-6 bg-white dark:bg-slate-900 rounded-3xl border-4 border-amber-200/60 dark:border-slate-700 shadow-xl relative overflow-hidden">
       <div className="absolute top-2 left-4 w-12 h-12 rounded-full bg-yellow-100/50 -z-10 animate-float" style={{ animationDelay: "1s" }} />
       <div className="absolute bottom-2 right-6 w-16 h-16 rounded-full bg-blue-100/50 -z-10 animate-float" style={{ animationDelay: "3s" }} />
 
       <div className="text-center z-10 w-full">
         {!isRecording && !isProcessing && (
-          <div className="mb-4">
-            <h3 className="text-xl font-bold text-slate-800 flex items-center justify-center gap-2">
+          <div className="mb-3">
+            <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center justify-center gap-2">
               <Sparkles className="w-5 h-5 text-amber-500 animate-spin" style={{ animationDuration: "3s" }} />
               Bé đã sẵn sàng chưa nào?
             </h3>
-            <p className="text-sm text-slate-500 mt-1">
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
               Nhấn chiếc Mic to màu xanh lá và đọc to câu ở trên nhé!
             </p>
           </div>
         )}
 
         {isRecording && (
-          <div className="mb-4">
+          <div className="mb-3">
             <h3 className="text-xl font-extrabold text-rose-500 animate-pulse flex items-center justify-center gap-2">
               <span className="w-3 h-3 rounded-full bg-rose-500 animate-ping inline-block" />
               Cô giáo AI đang lắng nghe con nói...
             </h3>
-            <span className="text-2xl font-black text-slate-700 font-mono mt-1 block">
+            <span className="text-2xl font-black text-slate-700 dark:text-slate-200 font-mono mt-1 block">
               {formatTime(recordingTime)}
             </span>
           </div>
@@ -243,25 +242,13 @@ export default function AudioRecorder({
             <h3 className="text-lg font-extrabold text-blue-600 animate-pulse">
               Đang chấm điểm phát âm...
             </h3>
-            <p className="text-sm text-slate-500 max-w-sm mt-1 px-4 text-center">
+            <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm mt-1 px-4 text-center">
               Cô giáo AI đang lắng nghe thật kỹ và chuẩn bị tặng sao vàng cho con đấy! 🚀
             </p>
           </div>
         )}
 
-        <div
-          className={`w-full max-w-md h-32 mx-auto mb-6 rounded-2xl border-2 border-slate-100 bg-slate-50/50 overflow-hidden flex items-center justify-center transition-all ${isRecording ? "scale-100 opacity-100 shadow-inner" : "scale-95 opacity-40 pointer-events-none"
-            }`}
-        >
-          {isRecording ? (
-            <canvas ref={canvasRef} width={450} height={120} className="w-full h-full block" />
-          ) : (
-            <div className="flex flex-col items-center text-slate-400 gap-1 select-none">
-              <Mic className="w-8 h-8 opacity-40" />
-              <span className="text-xs font-bold font-sans">Sóng âm thanh sẽ xuất hiện ở đây khi con nói</span>
-            </div>
-          )}
-        </div>
+
 
         <div className="flex items-center justify-center gap-4 z-20 relative">
           {!isRecording && !isProcessing && (
@@ -287,7 +274,7 @@ export default function AudioRecorder({
           )}
 
           {isProcessing && (
-            <div className="w-28 h-28 rounded-full bg-slate-100 border-4 border-slate-200 flex flex-col items-center justify-center text-slate-400 shadow-inner">
+            <div className="w-28 h-28 rounded-full bg-slate-100 dark:bg-slate-800 border-4 border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center text-slate-400 shadow-inner">
               <RefreshCw className="w-8 h-8 animate-spin" />
               <span className="text-[10px] font-black uppercase tracking-wider block mt-1">ĐANG TÍNH</span>
             </div>

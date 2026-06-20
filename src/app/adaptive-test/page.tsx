@@ -451,7 +451,7 @@ export default function AdaptiveTestPage() {
           
           {/* Big Illustration Area */}
           <div className="w-full bg-gradient-to-br from-slate-50 to-blue-50/50 dark:from-slate-800 dark:to-slate-800 border-2 border-dashed border-slate-200 dark:border-slate-600 rounded-3xl py-6 md:py-8 px-4 text-center mb-5 relative flex flex-col items-center justify-center">
-            <span className="text-8xl md:text-9xl tracking-widest block mb-3 animate-pop-in">{currentQuestion.illustration}</span>
+            <span className="text-[120px] md:text-[160px] leading-none tracking-widest block mb-3 animate-pop-in">{currentQuestion.illustration}</span>
             <span className="text-[10px] font-black text-slate-400 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-700 px-3 py-1 rounded-full shadow-sm max-w-xs uppercase tracking-wide">
               🎨 {currentQuestion.illustrationDesc}
             </span>
