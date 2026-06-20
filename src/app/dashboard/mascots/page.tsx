@@ -409,7 +409,11 @@ export default function MascotsManagementPage() {
         
         setEditingMascot({
           ...editingMascot,
+          id: json.id || editingMascot.id,
+          name: json.name || editingMascot.name,
+          description: json.description || editingMascot.description,
           avatarUrl: json.avatarUrl,
+          dialogue: json.dialogue || editingMascot.dialogue,
           images: {
             ...editingMascot.images,
             ...json.images
