@@ -56,6 +56,7 @@ export default function AnalyticsDashboard() {
   // Bar Chart State
   const [barChartMode, setBarChartMode] = useState<"class" | "school">("class");
   const [barData, setBarData] = useState<ChartDataPoint[]>([]);
+  const [isBarDataLoading, setIsBarDataLoading] = useState(true);
   
   // Student Detail State & Lazy Loading
   const [searchStudentTerm, setSearchStudentTerm] = useState("");
@@ -117,6 +118,7 @@ export default function AnalyticsDashboard() {
 
   const fetchBarData = async (mode: "class" | "school") => {
     try {
+      setIsBarDataLoading(true);
       const url = new URL("/api/analytics/aggregate", window.location.origin);
       url.searchParams.append("groupBy", mode);
       if (selectedSchool) url.searchParams.append("school", selectedSchool);
@@ -131,6 +133,8 @@ export default function AnalyticsDashboard() {
       }
     } catch (e) {
       console.error(e);
+    } finally {
+      setIsBarDataLoading(false);
     }
   };
 
@@ -388,7 +392,7 @@ export default function AnalyticsDashboard() {
           
           <div className="p-6 overflow-x-auto">
             {/* Using arbitrary cast since barData structure maps perfectly to BarChartData when fetched from API */}
-            <BarChartSVG data={barData as any} height={350} />
+            <BarChartSVG data={barData as any} height={350} isLoading={isBarDataLoading} />
           </div>
         </div>
 

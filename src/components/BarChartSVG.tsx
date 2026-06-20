@@ -15,6 +15,7 @@ interface BarChartData {
 interface BarChartSVGProps {
   data: BarChartData[];
   height?: number;
+  isLoading?: boolean;
 }
 
 const SKILLS = ["speaking", "listening", "reading", "writing"] as const;
@@ -50,7 +51,7 @@ const LABELS: Record<Skill, string> = {
   writing: "Viết",
 };
 
-export default function BarChartSVG({ data, height = 400 }: BarChartSVGProps) {
+export default function BarChartSVG({ data, height = 400, isLoading = false }: BarChartSVGProps) {
   const [hoveredBar, setHoveredBar] = useState<{
     groupIndex: number;
     skill: Skill;
@@ -66,6 +67,25 @@ export default function BarChartSVG({ data, height = 400 }: BarChartSVGProps) {
     const timer = setTimeout(() => setAnimated(true), 60);
     return () => clearTimeout(timer);
   }, [data]);
+
+  if (isLoading) {
+    return (
+      <div
+        className="flex flex-col items-center justify-center rounded-2xl gap-4"
+        style={{ height, background: "var(--chart-empty-bg)" }}
+      >
+        <div className="flex items-end gap-2.5 h-16">
+          <div className="w-3 bg-blue-500 rounded-t-md animate-bounce" style={{ height: '40%', animationDelay: '0ms' }}></div>
+          <div className="w-3 bg-emerald-500 rounded-t-md animate-bounce" style={{ height: '80%', animationDelay: '100ms' }}></div>
+          <div className="w-3 bg-amber-500 rounded-t-md animate-bounce" style={{ height: '60%', animationDelay: '200ms' }}></div>
+          <div className="w-3 bg-violet-500 rounded-t-md animate-bounce" style={{ height: '100%', animationDelay: '300ms' }}></div>
+        </div>
+        <p className="font-semibold animate-pulse" style={{ color: "var(--chart-text)" }}>
+          Đang tải dữ liệu...
+        </p>
+      </div>
+    );
+  }
 
   if (!data || data.length === 0) {
     return (
