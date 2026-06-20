@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useRef } from "react";
 import Link from "next/link";
+import YLEImport from "./components/YLEImport";
 import {
   ArrowLeft,
   Upload,
@@ -63,6 +64,8 @@ interface SubQuestionInput {
 }
 
 export default function CambridgeImportPage() {
+  const [activeTab, setActiveTab] = useState<"interactive" | "yle">("interactive");
+  
   // Questions list state
   const [questions, setQuestions] = useState<QuestionData[]>([]);
   const [loadingList, setLoadingList] = useState(true);
@@ -789,28 +792,46 @@ export default function CambridgeImportPage() {
       {/* Decorative Bubble Backgrounds */}
 
       {/* Navigation Header */}
-      <header className="w-full bg-white dark:bg-slate-900 border-b-4 border-slate-100 dark:border-slate-700 py-3 md:py-4 px-3 md:px-4 sticky top-0 z-30 shadow-sm">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
+      <header className="w-full bg-white dark:bg-slate-900 border-b-4 border-slate-100 dark:border-slate-700 pt-3 md:pt-4 px-3 md:px-4 sticky top-0 z-30 shadow-sm">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 pb-2">
           <Link href="/dashboard">
             <button className="btn-3d-gray px-4 py-2.5 text-xs font-black flex items-center gap-1">
               <ArrowLeft className="w-4 h-4" />
               QUAY VỀ
             </button>
           </Link>
-
-          <div className="flex items-center gap-1.5 md:gap-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-600 px-3 md:px-4 py-1 md:py-1.5 rounded-2xl shadow-inner">
-            <Layers className="w-5 h-5 text-indigo-500" />
-            <span className="text-[10px] md:text-xs font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider">Cambridge Digitalizer</span>
-          </div>
-
-          <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-indigo-50 dark:bg-indigo-950/50 flex items-center justify-center border-2 border-indigo-200 dark:border-indigo-700">
-            <span className="text-lg">☁️</span>
+          
+          <div className="flex bg-slate-100 dark:bg-slate-800 p-1.5 rounded-2xl border-2 border-slate-200 dark:border-slate-700 self-center">
+            <button 
+              onClick={() => setActiveTab("interactive")}
+              className={`px-4 md:px-6 py-2 rounded-xl text-xs md:text-sm font-black transition-all ${
+                activeTab === "interactive" 
+                  ? "bg-white dark:bg-slate-700 shadow-md text-indigo-600 dark:text-indigo-400 scale-105" 
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              🎤 Bài Test Tương Tác (Speaking)
+            </button>
+            <button 
+              onClick={() => setActiveTab("yle")}
+              className={`px-4 md:px-6 py-2 rounded-xl text-xs md:text-sm font-black transition-all ${
+                activeTab === "yle" 
+                  ? "bg-white dark:bg-slate-700 shadow-md text-amber-600 dark:text-amber-400 scale-105" 
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              🏆 Cambridge YLE (MCQ)
+            </button>
           </div>
         </div>
       </header>
 
-      {/* Main Workspace content */}
-      <main className="max-w-6xl w-full mx-auto px-3 md:px-4 mt-6 md:mt-8 flex flex-col gap-6 md:gap-8 flex-1">
+      {/* Main Content Area */}
+      <main className="flex-1 max-w-6xl w-full mx-auto p-4 md:p-6 animate-slide-up mt-4">
+        {activeTab === "yle" ? (
+          <YLEImport />
+        ) : (
+          <div className="space-y-6">
         
         {/* Banner Alert Toast */}
         {toast && (
@@ -1885,6 +1906,8 @@ export default function CambridgeImportPage() {
             </div>
           )}
         </section>
+        </div>
+        )}
 
         {showTypeManager && (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">

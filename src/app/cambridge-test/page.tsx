@@ -17,7 +17,6 @@ import {
   Home,
 } from "lucide-react";
 import {
-  CAMBRIDGE_QUESTIONS,
   CambridgeQuestion,
   CambridgeResult,
   calculateResult,
@@ -68,9 +67,9 @@ function getClubColor(club: string) {
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function CambridgeTestPage() {
-  const [testState, setTestState] = useState<"intro" | "test" | "results">(
-    "intro"
-  );
+  const [testState, setTestState] = useState<"intro" | "test" | "results">("intro");
+  const [questions, setQuestions] = useState<CambridgeQuestion[]>([]);
+  const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
@@ -87,14 +86,22 @@ export default function CambridgeTestPage() {
   const autoSubmitRef = useRef<NodeJS.Timeout | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const currentQuestion = CAMBRIDGE_QUESTIONS[currentIndex];
-  const totalQuestions = CAMBRIDGE_QUESTIONS.length;
-
-  // Voice preference from localStorage
-  const selectedVoice =
-    typeof window !== "undefined"
-      ? localStorage.getItem("preferred_accent_voice") || "en-US-AriaNeural"
-      : "en-US-AriaNeural";
+  useEffect(() => {
+    const fetchQuestions = async () => {
+      try {
+        const res = await fetch("/api/cambridge-questions");
+        const json = await res.json();
+        if (json.success && json.data) {
+          setQuestions(json.data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch questions:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchQuestions();
+  }, []);
 
   // ── Cleanup on unmount ──
   useEffect(() => {
@@ -106,6 +113,9 @@ export default function CambridgeTestPage() {
       }
     };
   }, []);
+
+  const currentQuestion = questions[currentIndex];
+  const totalQuestions = questions.length;
 
   // ── Auto-advance after selecting option ──
   useEffect(() => {
@@ -122,6 +132,12 @@ export default function CambridgeTestPage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedOption]);
+
+  // Voice preference from localStorage
+  const selectedVoice =
+    typeof window !== "undefined"
+      ? localStorage.getItem("preferred_accent_voice") || "en-US-AriaNeural"
+      : "en-US-AriaNeural";
 
   // ── TTS Playback ──
   const playNativeTTS = useCallback(
@@ -187,7 +203,7 @@ export default function CambridgeTestPage() {
 
     if (currentIndex + 1 >= totalQuestions) {
       // Test complete
-      const res = calculateResult(newAnswers, CAMBRIDGE_QUESTIONS);
+      const res = calculateResult(newAnswers, questions);
       setResult(res);
       setTestState("results");
     } else {
@@ -220,6 +236,18 @@ export default function CambridgeTestPage() {
       partNum: currentQuestion.part,
     };
   };
+
+  // ─── LOADING SCREEN ────────────────────────────────────────────────────────
+  if (loading) {
+    return (
+      <div className="w-full min-h-screen bg-pastel-bg dark:bg-dark-bg flex flex-col items-center justify-center p-4">
+        <div className="text-center">
+          <div className="text-6xl mb-4 animate-bounce">📚</div>
+          <h2 className="text-xl font-black text-slate-700 dark:text-slate-200">Đang tải đề thi...</h2>
+        </div>
+      </div>
+    );
+  }
 
   // ─── INTRO SCREEN ─────────────────────────────────────────────────────────
 
@@ -516,7 +544,7 @@ export default function CambridgeTestPage() {
 
   // Check if we are on the first question of a new section or part
   const prevQuestion =
-    currentIndex > 0 ? CAMBRIDGE_QUESTIONS[currentIndex - 1] : null;
+    currentIndex > 0 ? questions[currentIndex - 1] : null;
   const isNewSection =
     !prevQuestion || prevQuestion.section !== currentQuestion.section;
   const isNewPart =
