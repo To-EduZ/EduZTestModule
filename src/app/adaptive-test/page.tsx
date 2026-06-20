@@ -1,11 +1,21 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Volume2, Sparkles, Send, Mic, Headphones, BookOpen, PenTool, CheckCircle, RefreshCw, Compass } from "lucide-react";
+import { ArrowLeft, Volume2, Sparkles, Send, Mic, Headphones, BookOpen, PenTool, CheckCircle, RefreshCw, Compass, RotateCcw } from "lucide-react";
 import AudioRecorder from "@/components/AudioRecorder";
 import { AdaptiveQuestion } from "@/lib/adaptiveQuestionBank";
+
+// Shuffle helper (Fisher-Yates)
+function shuffleArray<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 
 export default function AdaptiveTestPage() {
   const router = useRouter();
@@ -27,34 +37,48 @@ export default function AdaptiveTestPage() {
   const [userWriting, setUserWriting] = useState("");
   const [startTime, setStartTime] = useState<number>(Date.now());
   
+  // Word Chips state (for Writing skill drag-and-drop)
+  const [shuffledWords, setShuffledWords] = useState<string[]>([]);
+  const [placedWords, setPlacedWords] = useState<string[]>([]);
+  
+  // Animation states
+  const [showCelebrate, setShowCelebrate] = useState(false);
+  const autoSubmitTimerRef = useRef<NodeJS.Timeout | null>(null);
+  
   // Results
   const [finalResult, setFinalResult] = useState<any>(null);
 
-  const voices = [
-    { code: "en-US-AriaNeural", name: "Mỹ (Nữ) 🇺🇸" },
-    { code: "en-US-GuyNeural", name: "Mỹ (Nam) 🇺🇸" },
-    { code: "en-GB-SoniaNeural", name: "Anh (Nữ) 🇬🇧" },
-    { code: "en-GB-RyanNeural", name: "Anh (Nam) 🇬🇧" },
-    { code: "en-AU-NatashaNeural", name: "Úc (Nữ) 🇦🇺" },
-  ];
+  // Use a fixed voice (simplified - no selector for kids)
+  const selectedVoice = typeof window !== "undefined" 
+    ? (localStorage.getItem("preferred_accent_voice") || "en-US-AriaNeural") 
+    : "en-US-AriaNeural";
 
-  const [selectedVoice, setSelectedVoice] = useState<string>("en-US-AriaNeural");
-
-  React.useEffect(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("preferred_accent_voice");
-      if (saved) {
-        setSelectedVoice(saved);
-      }
+  // When question changes and it's a Writing question, prepare word chips
+  useEffect(() => {
+    if (currentQuestion?.skill === "Writing" && currentQuestion.prompt) {
+      const words = currentQuestion.prompt.split(/\s+/).filter(w => w.length > 0);
+      setShuffledWords(shuffleArray(words));
+      setPlacedWords([]);
     }
-  }, []);
+  }, [currentQuestion]);
 
-  const handleVoiceChange = (voiceCode: string) => {
-    setSelectedVoice(voiceCode);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("preferred_accent_voice", voiceCode);
+  // Auto-submit for Reading/Listening after selecting an option
+  useEffect(() => {
+    if (selectedOption && currentQuestion && (currentQuestion.skill === "Listening" || currentQuestion.skill === "Reading")) {
+      // Show celebrate animation
+      setShowCelebrate(true);
+      
+      // Auto-submit after 1.2 seconds
+      autoSubmitTimerRef.current = setTimeout(() => {
+        handleChoiceSubmit(selectedOption);
+        setShowCelebrate(false);
+      }, 1200);
+      
+      return () => {
+        if (autoSubmitTimerRef.current) clearTimeout(autoSubmitTimerRef.current);
+      };
     }
-  };
+  }, [selectedOption]);
 
   const startTest = async () => {
     setIsProcessing(true);
@@ -92,7 +116,6 @@ export default function AdaptiveTestPage() {
       window.speechSynthesis.speak(utterance);
     } else {
       setTtsPlaying(false);
-      alert("Trình duyệt chưa hỗ trợ nghe thử rồi! 🔊");
     }
   };
 
@@ -148,6 +171,7 @@ export default function AdaptiveTestPage() {
         setCurrentQuestion(data.nextQuestion);
         setSelectedOption(null);
         setUserWriting("");
+        setPlacedWords([]);
         setStartTime(Date.now());
         setIsProcessing(false);
       }
@@ -177,17 +201,18 @@ export default function AdaptiveTestPage() {
     }
   };
 
-  const handleChoiceSubmit = () => {
-    if (!selectedOption) return;
+  const handleChoiceSubmit = (option?: string) => {
+    const choice = option || selectedOption;
+    if (!choice) return;
     const fd = new FormData();
-    fd.append("choice", selectedOption);
+    fd.append("choice", choice);
     submitAnswer(fd);
   };
 
-  const handleWritingSubmit = () => {
-    if (!userWriting.trim()) return;
+  const handleWritingSubmitFromChips = () => {
+    if (placedWords.length === 0) return;
     const fd = new FormData();
-    fd.append("textAnswer", userWriting);
+    fd.append("textAnswer", placedWords.join(" "));
     submitAnswer(fd);
   };
 
@@ -195,6 +220,119 @@ export default function AdaptiveTestPage() {
     const fd = new FormData();
     fd.append("audio", audioBlob, "speaking.webm");
     submitAnswer(fd);
+  };
+
+  // Word chip tap-to-place handlers
+  const handleWordChipTap = (word: string, index: number) => {
+    setPlacedWords(prev => [...prev, word]);
+    setShuffledWords(prev => {
+      const next = [...prev];
+      next.splice(index, 1);
+      return next;
+    });
+  };
+
+  const handlePlacedWordTap = (word: string, index: number) => {
+    setShuffledWords(prev => [...prev, word]);
+    setPlacedWords(prev => {
+      const next = [...prev];
+      next.splice(index, 1);
+      return next;
+    });
+  };
+
+  // Drag and Drop handlers
+  const handleDragStart = (e: React.DragEvent, word: string, index: number, source: "avail" | "placed") => {
+    e.dataTransfer.setData("text/plain", JSON.stringify({ word, index, source }));
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault(); // Allow drop
+    e.dataTransfer.dropEffect = "move";
+  };
+
+  const handleDropToPlaced = (e: React.DragEvent, targetIndex?: number) => {
+    e.preventDefault();
+    try {
+      const data = JSON.parse(e.dataTransfer.getData("text/plain"));
+      const wordToMove = data.word;
+      
+      let newPlaced = [...placedWords];
+      let newShuffled = [...shuffledWords];
+
+      if (data.source === "avail") {
+        newShuffled.splice(data.index, 1);
+        if (typeof targetIndex === "number") {
+          newPlaced.splice(targetIndex, 0, wordToMove);
+        } else {
+          newPlaced.push(wordToMove);
+        }
+      } else if (data.source === "placed") {
+        newPlaced.splice(data.index, 1);
+        let adjustedTarget = targetIndex;
+        if (typeof adjustedTarget === "number") {
+          if (data.index < adjustedTarget) {
+            adjustedTarget--;
+          }
+          newPlaced.splice(adjustedTarget, 0, wordToMove);
+        } else {
+          newPlaced.push(wordToMove);
+        }
+      }
+
+      setPlacedWords(newPlaced);
+      setShuffledWords(newShuffled);
+    } catch (err) {}
+  };
+
+  const handleDropOnPlacedWord = (e: React.DragEvent, idx: number) => {
+    e.preventDefault();
+    e.stopPropagation(); // Stop bubbling to the container
+    
+    const rect = e.currentTarget.getBoundingClientRect();
+    const isRightHalf = e.clientX > rect.left + rect.width / 2;
+    const targetIndex = isRightHalf ? idx + 1 : idx;
+    
+    handleDropToPlaced(e, targetIndex);
+  };
+
+  const handleDropToAvail = (e: React.DragEvent) => {
+    e.preventDefault();
+    try {
+      const data = JSON.parse(e.dataTransfer.getData("text/plain"));
+      if (data.source === "placed") {
+        handlePlacedWordTap(data.word, data.index);
+      }
+    } catch (err) {}
+  };
+
+  const handleResetWords = () => {
+    if (!currentQuestion) return;
+    const words = currentQuestion.prompt.split(/\s+/).filter(w => w.length > 0);
+    setShuffledWords(shuffleArray(words));
+    setPlacedWords([]);
+  };
+
+  // Skill icon helper
+  const getSkillIcon = (skill: string) => {
+    switch (skill) {
+      case "Speaking": return <Mic className="w-5 h-5 text-pink-500" />;
+      case "Listening": return <Headphones className="w-5 h-5 text-blue-500" />;
+      case "Reading": return <BookOpen className="w-5 h-5 text-emerald-500" />;
+      case "Writing": return <PenTool className="w-5 h-5 text-amber-500" />;
+      default: return null;
+    }
+  };
+
+  const getSkillColor = (skill: string) => {
+    switch (skill) {
+      case "Speaking": return "bg-pink-100 text-pink-700 border-pink-300 dark:bg-pink-950/30 dark:text-pink-300 dark:border-pink-800";
+      case "Listening": return "bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-950/30 dark:text-blue-300 dark:border-blue-800";
+      case "Reading": return "bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-800";
+      case "Writing": return "bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-800";
+      default: return "";
+    }
   };
 
   // UI Renders
@@ -276,206 +414,199 @@ export default function AdaptiveTestPage() {
   if (!currentQuestion) return null;
 
   return (
-    <div className="w-full min-h-screen bg-pastel-bg dark:bg-dark-bg pb-20">
-      <header className="w-full bg-white dark:bg-slate-900 border-b-4 border-slate-100 dark:border-slate-700 py-3 md:py-4 px-3 md:px-4 sticky top-0 z-30 shadow-sm flex items-center justify-between gap-2">
-        <Link href="/">
-          <button className="btn-3d-gray px-2.5 md:px-3 py-1.5 md:py-2 text-[10px] md:text-xs font-black flex items-center gap-1">
-            <ArrowLeft className="w-3.5 h-3.5 md:w-4 md:h-4" /> <span className="hidden sm:inline">THOÁT</span><span className="sm:hidden">VỀ</span>
-          </button>
-        </Link>
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] md:text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block text-center">Câu hỏi</span>
-          <span className="bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 font-black px-2.5 md:px-3 py-1 rounded-xl border border-amber-300 dark:border-amber-700 text-sm">
-            #{questionCount}
-          </span>
-        </div>
-        <div className="flex items-center gap-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-600 px-2 md:px-3 py-1 md:py-1.5 rounded-xl text-[10px] md:text-xs font-black text-slate-600 dark:text-slate-300 uppercase">
-          Level: <span className="text-blue-500 dark:text-blue-400">{currentLevel}</span>
+    <div className="w-full min-h-screen bg-pastel-bg dark:bg-dark-bg flex flex-col">
+      {/* Compact Header */}
+      <header className="w-full bg-white dark:bg-slate-900 border-b-4 border-slate-100 dark:border-slate-700 py-2.5 md:py-3 px-3 md:px-4 sticky top-0 z-30 shadow-sm relative">
+        <div className="max-w-4xl mx-auto flex items-center justify-between">
+          <Link href="/">
+            <button className="btn-3d-gray px-3 py-1.5 text-xs font-black flex items-center gap-1 z-10 relative">
+              <ArrowLeft className="w-4 h-4" /> <span className="hidden sm:inline">THOÁT</span><span className="sm:hidden">VỀ</span>
+            </button>
+          </Link>
+          
+          {/* Centered Skill Indicator */}
+          <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
+            <span className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-2xl border-2 text-sm font-black shadow-sm ${getSkillColor(currentQuestion.skill)}`}>
+              {getSkillIcon(currentQuestion.skill)}
+              {currentQuestion.skill}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 z-10 relative">
+            {/* Progress Tracker (e.g. 3/20) */}
+            <span className="bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 font-black px-3 py-1.5 rounded-xl border-2 border-amber-300 dark:border-amber-700 text-xs md:text-sm shadow-sm flex items-center gap-1">
+              <span>🎯</span>
+              <span>{questionCount} / 20</span>
+            </span>
+            <span className="hidden sm:inline-flex bg-slate-100 dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-black px-2 py-1.5 rounded-xl border border-slate-200 dark:border-slate-600 text-[10px] uppercase">
+              {currentLevel}
+            </span>
+          </div>
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-3 md:px-4 mt-6 md:mt-8 flex flex-col justify-center">
-        <section className="bg-white dark:bg-slate-900 rounded-3xl border-4 border-slate-100 dark:border-slate-700 p-4 md:p-6 shadow-xl mb-6 relative overflow-hidden">
-          {/* Header Title with Mascot */}
-          <div className="flex items-center gap-3 mb-6 border-b border-slate-100 pb-4">
-            <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-amber-50 dark:bg-amber-950/40 border-2 border-amber-200 dark:border-amber-800 flex items-center justify-center text-xl md:text-2xl shadow-sm shrink-0">
-              {currentQuestion.level === "Starters" ? "🦛" : currentQuestion.level === "Movers" ? "🐒" : "🦁"}
-            </div>
-            <div>
-              <span className="bg-amber-100 text-amber-700 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md flex items-center gap-1">
-                {currentQuestion.skill === "Speaking" && <Mic className="w-3 h-3 text-pink-500" />}
-                {currentQuestion.skill === "Listening" && <Headphones className="w-3 h-3 text-blue-500" />}
-                {currentQuestion.skill === "Reading" && <BookOpen className="w-3 h-3 text-emerald-500" />}
-                {currentQuestion.skill === "Writing" && <PenTool className="w-3 h-3 text-amber-500" />}
-                Kỹ năng {currentQuestion.skill}
-              </span>
-              <p className="text-sm font-bold text-slate-500 mt-1">{currentQuestion.hint}</p>
-            </div>
-          </div>
-
-          <div className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-dashed border-slate-200 dark:border-slate-600 rounded-2xl py-4 md:py-6 px-3 md:px-4 text-center mb-4 md:mb-6 relative flex flex-col items-center justify-center">
-            <span className="text-6xl tracking-widest block mb-3">{currentQuestion.illustration}</span>
-            <span className="text-xs font-black text-slate-400 bg-white border border-slate-100 px-3 py-1 rounded-full shadow-sm max-w-xs uppercase tracking-wide">
+      {/* Main Content — centered, no scroll needed */}
+      <main className="flex-1 flex items-center justify-center px-3 md:px-4 py-4">
+        <section className="bg-white dark:bg-slate-900 rounded-3xl border-4 border-slate-100 dark:border-slate-700 p-4 md:p-6 shadow-xl w-full max-w-2xl relative overflow-hidden animate-slide-up">
+          
+          {/* Big Illustration Area */}
+          <div className="w-full bg-gradient-to-br from-slate-50 to-blue-50/50 dark:from-slate-800 dark:to-slate-800 border-2 border-dashed border-slate-200 dark:border-slate-600 rounded-3xl py-6 md:py-8 px-4 text-center mb-5 relative flex flex-col items-center justify-center">
+            <span className="text-8xl md:text-9xl tracking-widest block mb-3 animate-pop-in">{currentQuestion.illustration}</span>
+            <span className="text-[10px] font-black text-slate-400 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-700 px-3 py-1 rounded-full shadow-sm max-w-xs uppercase tracking-wide">
               🎨 {currentQuestion.illustrationDesc}
             </span>
           </div>
 
-          {/* DYNAMIC SKILL WORKSPACE */}
-          
           {/* SPEAKING */}
           {currentQuestion.skill === "Speaking" && (
-            <div className="text-center py-4 border-t border-slate-100">
-              <p className="text-2xl font-black text-slate-800 tracking-tight leading-snug mb-4">
-                "{currentQuestion.prompt}"
+            <div className="text-center py-4">
+              <p className="text-3xl md:text-4xl font-black text-slate-800 dark:text-slate-100 tracking-tight leading-snug mb-8">
+                &quot;{currentQuestion.prompt}&quot;
               </p>
               
-              {/* Voice Accent Selector */}
-              <div className="mt-4 mb-4 bg-slate-50/50 border border-slate-200/60 rounded-2xl p-3 inline-block mx-auto max-w-full">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-2 text-center">
-                  Chọn accent của cô giáo AI:
-                </span>
-                <div className="flex flex-wrap justify-center gap-1.5">
-                  {voices.map((v) => {
-                    const isSelected = selectedVoice === v.code;
-                    return (
-                      <button
-                        key={v.code}
-                        onClick={() => handleVoiceChange(v.code)}
-                        disabled={ttsPlaying || isProcessing}
-                        className={`px-2.5 py-1.5 rounded-xl text-[10px] font-bold border-2 transition-all cursor-pointer ${
-                          isSelected
-                            ? "bg-indigo-50 border-indigo-400 text-indigo-600 font-extrabold scale-105"
-                            : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"
-                        }`}
-                      >
-                        {v.name}
-                      </button>
-                    );
-                  })}
-                </div>
+              <div className="mt-2">
+                <AudioRecorder
+                  onRecordingComplete={handleSpeakingSubmit}
+                  isProcessing={isProcessing}
+                  sentence={currentQuestion.prompt}
+                />
               </div>
-
-              <button
-                onClick={playTTS}
-                disabled={ttsPlaying || isProcessing}
-                className="btn-3d-yellow px-5 py-2.5 text-xs font-black uppercase tracking-wider flex items-center justify-center mx-auto gap-1.5"
-              >
-                <Volume2 className={`w-4 h-4 ${ttsPlaying ? "animate-bounce" : ""}`} />
-                {ttsPlaying ? "Đang đọc mẫu..." : "Nghe cô đọc mẫu 🔊"}
-              </button>
             </div>
           )}
 
-          {/* LISTENING & READING */}
+          {/* LISTENING & READING — with auto-submit */}
           {(currentQuestion.skill === "Listening" || currentQuestion.skill === "Reading") && (
-            <div className="border-t border-slate-100 pt-6">
+            <div className="pt-2">
               {currentQuestion.skill === "Listening" ? (
-               <div className="text-center mb-6 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-2xl p-4">
-                 {/* Voice Accent Selector */}
-                 <div className="mt-1 mb-4 bg-white/80 dark:bg-slate-800/80 border border-blue-100 dark:border-slate-700 rounded-2xl p-2.5 inline-block mx-auto max-w-full">
-                   <span className="text-[10px] font-black text-blue-400 dark:text-blue-550 uppercase tracking-wider block mb-1.5 text-center">
-                     Chọn accent của cô giáo AI:
-                   </span>
-                   <div className="flex flex-wrap justify-center gap-1.5">
-                     {voices.map((v) => {
-                       const isSelected = selectedVoice === v.code;
-                       return (
-                         <button
-                           key={v.code}
-                           onClick={() => handleVoiceChange(v.code)}
-                           disabled={ttsPlaying || isProcessing}
-                           className={`px-2.5 py-1.5 rounded-xl text-[10px] font-bold border-2 transition-all cursor-pointer ${
-                             isSelected
-                               ? "bg-blue-50 dark:bg-blue-950/40 border-blue-400 dark:border-blue-700 text-blue-600 dark:text-blue-400 font-extrabold scale-105"
-                               : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-655"
-                           }`}
-                         >
-                           {v.name}
-                         </button>
-                       );
-                     })}
-                   </div>
-                 </div>
-
-                 <button onClick={playTTS} disabled={ttsPlaying || isProcessing} className="btn-3d-blue px-6 py-3.5 text-sm font-black uppercase tracking-wider flex items-center justify-center gap-2 mx-auto">
-                   <Volume2 className="w-5 h-5" />
-                   {ttsPlaying ? "Đang phát âm thanh... 🔊" : "BẤM ĐỂ NGHE 🔊"}
-                 </button>
-               </div>
-            ) : (
-              <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-4 mb-6 text-center">
-                <p className="text-lg font-extrabold text-slate-800 dark:text-slate-100 font-serif">"{currentQuestion.prompt}"</p>
+                <div className="text-center mb-5">
+                  <button onClick={playTTS} disabled={ttsPlaying || isProcessing} className="btn-3d-blue px-8 py-4 text-base font-black uppercase tracking-wider flex items-center justify-center gap-2 mx-auto">
+                    <Volume2 className="w-6 h-6" />
+                    {ttsPlaying ? "Đang phát... 🔊" : "BẤM ĐỂ NGHE 🔊"}
+                  </button>
+                </div>
+              ) : (
+                <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-4 mb-5 text-center">
+                  <p className="text-xl md:text-2xl font-extrabold text-slate-800 dark:text-slate-100">&quot;{currentQuestion.prompt}&quot;</p>
+                </div>
+              )}
+              
+              <p className="text-slate-800 dark:text-slate-200 font-extrabold text-base mb-4">❓ {currentQuestion.questionText}</p>
+              
+              <div className="grid grid-cols-1 gap-3">
+                {currentQuestion.options?.map((opt, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => {
+                      if (isProcessing) return;
+                      setSelectedOption(opt);
+                    }}
+                    disabled={isProcessing || selectedOption !== null}
+                    className={`w-full text-left p-4 md:p-5 rounded-2xl border-3 font-extrabold text-base transition-all flex justify-between items-center ${
+                      selectedOption === opt 
+                        ? "bg-blue-50 dark:bg-blue-950/30 border-blue-500 dark:border-blue-700 text-blue-700 dark:text-blue-300 animate-celebrate" 
+                        : selectedOption !== null
+                        ? "bg-slate-50 dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-400 dark:text-slate-500 opacity-60"
+                        : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-blue-400 hover:translate-y-[-2px]"
+                    }`}
+                  >
+                    <span className="text-base md:text-lg">{opt}</span>
+                    {selectedOption === opt && <CheckCircle className="w-6 h-6 text-blue-500 animate-pop-in" />}
+                  </button>
+                ))}
               </div>
-            )}
-            
-            <p className="text-slate-800 dark:text-slate-200 font-extrabold text-sm mb-4">❓ {currentQuestion.questionText}</p>
-            
-            <div className="grid grid-cols-1 gap-3 mb-6">
-              {currentQuestion.options?.map((opt, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setSelectedOption(opt)}
-                  disabled={isProcessing}
-                  className={`w-full text-left p-4 rounded-2xl border-2 font-extrabold text-sm transition-all flex justify-between ${
-                    selectedOption === opt 
-                      ? "bg-blue-50 dark:bg-blue-950/30 border-blue-500 dark:border-blue-700 text-blue-700 dark:text-blue-300" 
-                      : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-750 text-slate-700 dark:text-slate-300"
-                  }`}
-                >
-                  {opt}
-                  {selectedOption === opt && <CheckCircle className="w-5 h-5 text-blue-500" />}
-                </button>
-              ))}
-            </div>
 
-              <button
-                onClick={handleChoiceSubmit}
-                disabled={!selectedOption || isProcessing}
-                className="btn-3d-green w-full py-4 text-sm font-black tracking-wider uppercase flex items-center justify-center gap-1.5"
-              >
-                Gửi câu trả lời
-              </button>
+              {selectedOption && (
+                <div className="mt-4 text-center">
+                  <p className="text-sm font-black text-blue-500 animate-pulse">✨ Đang gửi câu trả lời...</p>
+                </div>
+              )}
             </div>
           )}
 
-          {/* WRITING */}
+          {/* WRITING — Word Chips Drag & Drop */}
           {currentQuestion.skill === "Writing" && (
-            <div className="border-t border-slate-100 pt-6">
-              <label className="block text-slate-700 font-extrabold text-sm mb-2">Con viết câu của mình vào đây nhé: 📝</label>
-              <textarea
-                rows={3}
-                value={userWriting}
-                onChange={(e) => setUserWriting(e.target.value)}
-                disabled={isProcessing}
-                className="w-full rounded-2xl border-2 border-slate-200 focus:border-amber-400 p-4 text-base font-extrabold text-slate-700 outline-none mb-6"
-              />
-              <button
-                onClick={handleWritingSubmit}
-                disabled={!userWriting.trim() || isProcessing}
-                className="btn-3d-green w-full py-4 text-sm font-black tracking-wider uppercase flex items-center justify-center gap-1.5"
+            <div className="pt-2">
+              <p className="text-slate-700 dark:text-slate-200 font-extrabold text-base md:text-lg mb-1">📝 Ghép các từ thành câu đúng:</p>
+              <p className="text-xs md:text-sm font-bold text-slate-500 dark:text-slate-400 mb-4">Bấm hoặc kéo thả từ bên dưới để ghép câu.</p>
+              
+              {/* Drop zone (placed words) */}
+              <div 
+                className={`drop-zone mb-5 min-h-[72px] ${placedWords.length > 0 ? "has-items" : ""}`}
+                onDragOver={handleDragOver}
+                onDrop={handleDropToPlaced}
               >
-                <Send className="w-4 h-4" /> Nộp bài
-              </button>
+                {placedWords.length === 0 ? (
+                  <span className="text-sm md:text-base font-bold text-slate-400 dark:text-slate-500 italic">
+                    Kéo thả hoặc bấm vào các từ bên dưới để xếp vào đây... ✨
+                  </span>
+                ) : (
+                  placedWords.map((word, idx) => (
+                    <button
+                      key={`placed-${idx}-${word}`}
+                      onClick={() => handlePlacedWordTap(word, idx)}
+                      draggable={!isProcessing}
+                      onDragStart={(e) => handleDragStart(e, word, idx, "placed")}
+                      onDragOver={handleDragOver}
+                      onDrop={(e) => handleDropOnPlacedWord(e, idx)}
+                      className="word-chip placed animate-pop-in cursor-grab active:cursor-grabbing"
+                      type="button"
+                    >
+                      {word}
+                    </button>
+                  ))
+                )}
+              </div>
+
+              {/* Available word chips */}
+              <div 
+                className="flex flex-wrap gap-3 justify-center mb-5 min-h-[50px]"
+                onDragOver={handleDragOver}
+                onDrop={handleDropToAvail}
+              >
+                {shuffledWords.map((word, idx) => (
+                  <button
+                    key={`avail-${idx}-${word}`}
+                    onClick={() => handleWordChipTap(word, idx)}
+                    draggable={!isProcessing}
+                    onDragStart={(e) => handleDragStart(e, word, idx, "avail")}
+                    className="word-chip cursor-grab active:cursor-grabbing"
+                    type="button"
+                    disabled={isProcessing}
+                  >
+                    {word}
+                  </button>
+                ))}
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex gap-3">
+                <button
+                  onClick={handleResetWords}
+                  disabled={placedWords.length === 0 || isProcessing}
+                  className="btn-3d-gray px-4 py-3 text-xs font-black flex items-center gap-1.5 flex-1"
+                  type="button"
+                >
+                  <RotateCcw className="w-4 h-4" /> Xếp lại
+                </button>
+                <button
+                  onClick={handleWritingSubmitFromChips}
+                  disabled={shuffledWords.length > 0 || isProcessing}
+                  className="btn-3d-green px-4 py-3 text-sm font-black tracking-wider uppercase flex items-center justify-center gap-1.5 flex-[2]"
+                  type="button"
+                >
+                  <Send className="w-4 h-4" /> Gửi câu trả lời
+                </button>
+              </div>
             </div>
           )}
         </section>
-
-        {currentQuestion.skill === "Speaking" && (
-          <section className="w-full mb-8">
-            <AudioRecorder
-              onRecordingComplete={handleSpeakingSubmit}
-              isProcessing={isProcessing}
-              sentence={currentQuestion.prompt}
-            />
-          </section>
-        )}
-
-        {errorMsg && (
-          <div className="p-4 bg-rose-50 border-2 border-rose-200 rounded-2xl text-rose-600 font-bold text-sm mb-8 text-center">
-            {errorMsg}
-          </div>
-        )}
       </main>
+
+      {errorMsg && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 p-4 bg-rose-50 border-2 border-rose-200 rounded-2xl text-rose-600 font-bold text-sm text-center shadow-lg z-40 max-w-sm animate-slide-up">
+          {errorMsg}
+        </div>
+      )}
 
       {/* Loading overlay for transitions */}
       {isProcessing && testState === "running" && (

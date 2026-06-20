@@ -4,11 +4,21 @@ import React, { useState, useEffect, useRef } from "react";
 import { 
   Mic, Square, Loader2, PlayCircle, Send, Image as ImageIcon,
   Star, Award, Sparkles, Volume2, BookOpen, PenTool, CheckCircle2, 
-  XCircle, ChevronRight, Home, ArrowRight, Trophy, Shield, RefreshCw, Compass
+  XCircle, ChevronRight, Home, ArrowRight, Trophy, Shield, RefreshCw, Compass, RotateCcw
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import DevelopmentRadarChart from "@/components/DevelopmentRadarChart";
+
+// Shuffle helper (Fisher-Yates)
+function shuffleArray<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 
 type Stage = "intro" | "warmup" | "picture" | "reading" | "writing" | "results";
 
@@ -124,13 +134,13 @@ export default function InteractiveTest() {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Real-time and Child-friendly states
-  const [isRealtimeMode, setIsRealtimeMode] = useState(true);
-  const [autoActivateMic, setAutoActivateMic] = useState(true);
+  // Real-time and Child-friendly states (simplified: always real-time, always auto-mic)
+  const isRealtimeMode = true;
+  const autoActivateMic = true;
   const [realtimeTranscript, setRealtimeTranscript] = useState("");
   const [isSpeechSupported, setIsSpeechSupported] = useState(true);
   const [isTtsSpeaking, setIsTtsSpeaking] = useState(false);
-  const [interactiveMode, setInteractiveMode] = useState<"practice" | "test">("practice");
+  const interactiveMode = "practice" as const;
   const [showVocabularyHint, setShowVocabularyHint] = useState(false);
 
   const recognitionRef = useRef<any>(null);
@@ -159,7 +169,6 @@ export default function InteractiveTest() {
       const SpeechRecognitionClass = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       if (!SpeechRecognitionClass) {
         setIsSpeechSupported(false);
-        setIsRealtimeMode(false);
       }
     }
   }, []);
@@ -206,6 +215,10 @@ export default function InteractiveTest() {
   const [writingSubmitted, setWritingSubmitted] = useState(false);
   const [spellingCorrect1, setSpellingCorrect1] = useState<boolean | null>(null);
   const [spellingCorrect2, setSpellingCorrect2] = useState<boolean | null>(null);
+  
+  // Letter Tiles state (replaces keyboard input for spelling)
+  const [availableLetters, setAvailableLetters] = useState<{letter: string, id: number}[]>([]);
+  const [selectedLetters, setSelectedLetters] = useState<{letter: string, id: number}[]>([]);
   
   // Final aggregated scores out of 100
   const [scores, setScores] = useState({
@@ -268,14 +281,32 @@ export default function InteractiveTest() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isProcessing, stage]);
 
-  // Auto-switch tabs based on stage/activity change
+  // Auto-switch layout based on stage
   useEffect(() => {
     if (stage === "warmup") {
       setActiveTab("chat");
-    } else if (stage === "picture" || stage === "reading" || stage === "writing") {
+    } else {
       setActiveTab("progress");
     }
-  }, [stage, showMcq, pictureIndex]);
+  }, [stage]);
+
+  // Initialize letter tiles when entering writing stage or switching writing task
+  useEffect(() => {
+    if (stage === "writing" && activeSpelling[writingTaskIndex]) {
+      const correctWord = activeSpelling[writingTaskIndex].correctWord;
+      const correctLetters = correctWord.toLowerCase().split("");
+      // Generate 3-4 distractor letters
+      const distractors = "bcdfghjklmnpqrstvwxyzaeiou".split("").filter(l => !correctLetters.includes(l));
+      const numDistractors = Math.min(3, distractors.length);
+      const shuffledDistractors = shuffleArray(distractors).slice(0, numDistractors);
+      // Combine and shuffle all letters with unique IDs
+      const allLetters = [...correctLetters, ...shuffledDistractors].map((letter, i) => ({ letter, id: i }));
+      setAvailableLetters(shuffleArray(allLetters));
+      setSelectedLetters([]);
+      setTypedWord("");
+      setWritingSubmitted(false);
+    }
+  }, [stage, writingTaskIndex]);
 
   const playTTS = (text: string) => {
     const cleanText = text.replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, '');
@@ -677,12 +708,29 @@ export default function InteractiveTest() {
     }
   };
 
-  // Stage 4 Writing submission & scoring calculation
+  // Letter tile tap handlers
+  const handleLetterTileTap = (tile: {letter: string, id: number}) => {
+    setAvailableLetters(prev => prev.filter(t => t.id !== tile.id));
+    setSelectedLetters(prev => [...prev, tile]);
+  };
+
+  const handleAnswerLetterTap = (tile: {letter: string, id: number}) => {
+    setSelectedLetters(prev => prev.filter(t => t.id !== tile.id));
+    setAvailableLetters(prev => [...prev, tile]);
+  };
+
+  const handleResetLetters = () => {
+    setAvailableLetters(prev => [...prev, ...selectedLetters]);
+    setSelectedLetters([]);
+  };
+
+  // Stage 4 Writing submission & scoring calculation (using letter tiles)
   const handleWritingSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!typedWord.trim()) return;
+    const builtWord = selectedLetters.map(t => t.letter).join("");
+    if (!builtWord) return;
 
-    const isCorrect = typedWord.toLowerCase().trim() === activeSpelling[writingTaskIndex].correctWord.toLowerCase().trim();
+    const isCorrect = builtWord.toLowerCase().trim() === activeSpelling[writingTaskIndex].correctWord.toLowerCase().trim();
 
     if (writingTaskIndex === 0) {
       // Save Task 1 result
@@ -699,6 +747,7 @@ export default function InteractiveTest() {
         setTypedWord("");
         setWritingSubmitted(false);
         setWritingTaskIndex(1);
+        // Letter tiles will be re-initialized by the useEffect
       }, 2500);
       
     } else {
@@ -1255,58 +1304,9 @@ export default function InteractiveTest() {
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 shrink-0">
-          {/* Mode Switcher */}
-          <div className="flex gap-0.5 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-2xl border border-slate-200 dark:border-slate-700">
-            <button
-              type="button"
-              onClick={() => {
-                setInteractiveMode("practice");
-                setShowVocabularyHint(false);
-              }}
-              className={`px-2 md:px-3 py-1 rounded-xl text-[9px] md:text-[10px] font-black tracking-wide uppercase transition-all cursor-pointer ${
-                interactiveMode === "practice"
-                  ? "bg-gradient-to-r from-emerald-400 to-green-500 text-white shadow-sm"
-                  : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-              }`}
-            >
-              Luyện tập 🎮
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setInteractiveMode("test");
-                setShowVocabularyHint(false);
-              }}
-              className={`px-2 md:px-3 py-1 rounded-xl text-[9px] md:text-[10px] font-black tracking-wide uppercase transition-all cursor-pointer ${
-                interactiveMode === "test"
-                  ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-sm"
-                  : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-              }`}
-            >
-              Thi thử 🏆
-            </button>
-          </div>
-
-          {/* AI Accent Selector */}
-          <div className="relative">
-            <select
-              value={selectedVoice}
-              onChange={(e) => handleVoiceChange(e.target.value)}
-              className="appearance-none bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-750 border-2 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-[10px] sm:text-xs font-black rounded-2xl pl-6 sm:pl-8 pr-5 sm:pr-7 py-1.5 sm:py-2 transition-all shadow-sm focus:outline-none cursor-pointer"
-            >
-              {voices.map((v) => (
-                <option key={v.code} value={v.code} className="dark:bg-slate-900 dark:text-slate-200 font-bold">
-                  {v.name.split(" ")[0]}
-                </option>
-              ))}
-            </select>
-            <span className="absolute left-1.5 sm:left-2.5 top-1/2 -translate-y-1/2 text-[10px] sm:text-xs pointer-events-none">🌐</span>
-            <span className="absolute right-1.5 sm:right-2.5 top-1/2 -translate-y-1/2 text-[6px] sm:text-[7px] pointer-events-none opacity-60">▼</span>
-          </div>
-
+        <div className="flex items-center gap-2 shrink-0">
           <Link href="/">
-            <button className="btn-3d-pink px-2.5 sm:px-4 py-1.5 sm:py-2.5 text-[10px] sm:text-xs font-black flex items-center gap-1 cursor-pointer">
+            <button className="btn-3d-pink px-3 sm:px-4 py-1.5 sm:py-2.5 text-[10px] sm:text-xs font-black flex items-center gap-1 cursor-pointer">
               <span>Thoát</span>
               <span className="hidden sm:inline">🚪</span>
             </button>
@@ -1314,42 +1314,8 @@ export default function InteractiveTest() {
         </div>
       </div>
 
-      {/* Dynamic Tab Switcher for kids - Hidden on Desktop */}
-      <div className="px-4 pt-3 pb-1 flex gap-2 select-none shrink-0 lg:hidden">
-        <button
-          type="button"
-          onClick={() => setActiveTab("progress")}
-          className={`flex-1 py-3 px-4 rounded-2xl font-black text-sm md:text-base flex items-center justify-center gap-2 border-b-4 transition-all duration-100 ${
-            activeTab === "progress"
-              ? "bg-amber-400 text-amber-950 border-amber-600 shadow-md scale-[1.02]"
-              : "bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 border-b-2 hover:bg-slate-50 dark:hover:bg-slate-750"
-          }`}
-        >
-          <span className="text-lg">🖼️</span>
-          <span>Tranh & Bài học</span>
-        </button>
-        
-        <button
-          type="button"
-          onClick={() => setActiveTab("chat")}
-          className={`flex-1 py-3 px-4 rounded-2xl font-black text-sm md:text-base flex items-center justify-center gap-2 border-b-4 transition-all duration-100 relative ${
-            activeTab === "chat"
-              ? "bg-blue-400 text-blue-950 border-blue-600 shadow-md scale-[1.02]"
-              : "bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 border-b-2 hover:bg-slate-50 dark:hover:bg-slate-750"
-          }`}
-        >
-          <span className="text-lg">💬</span>
-          <span>Trò chuyện cùng cô</span>
-          {messages.length > 0 && activeTab !== "chat" && (
-            <span className="absolute -top-1.5 -right-1 flex h-4 w-4">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-455 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-4 w-4 bg-rose-500 text-[9px] text-white font-bold items-center justify-center">!</span>
-            </span>
-          )}
-        </button>
-      </div>
 
-      {/* Main Workspace Area (Tab Content) */}
+      {/* Main Workspace Area — fullscreen per stage on mobile */}
       <div className="flex-1 p-4 min-h-0 overflow-hidden relative">
         <div className="h-full w-full bg-white dark:bg-slate-900 rounded-3xl border-4 border-slate-150 dark:border-slate-800 shadow-md p-4 md:p-6 overflow-hidden">
           
@@ -1362,30 +1328,13 @@ export default function InteractiveTest() {
                <div className="flex-1 flex flex-col justify-center items-center text-center p-4">
                  <div className="relative mb-6">
                    <div className="absolute inset-0 bg-gradient-to-r from-blue-300 to-indigo-300 rounded-full blur-xl opacity-30 animate-pulse" />
-                   <span className="text-7xl block relative animate-bounce" style={{ animationDuration: "3s" }}>🏫</span>
+                   <span className="text-8xl md:text-9xl block relative animate-bounce" style={{ animationDuration: "3s" }}>🏫</span>
                  </div>
                  <h3 className="text-2xl font-black text-slate-800 dark:text-slate-100 mb-2">Giai đoạn 1: Chào hỏi với cô giáo AI</h3>
                  <p className="text-sm md:text-base text-slate-500 dark:text-slate-400 max-w-md leading-relaxed font-black">
                    Con hãy lắng nghe câu hỏi của cô giáo Lily, nhấn nút micro ở dưới cùng và nói thật rõ ràng nhé! 🎤🌟
                  </p>
                  
-                 {/* Cute illustration layout */}
-                 <div className="mt-8 border-4 border-dashed border-slate-200 dark:border-slate-700 rounded-3xl p-6 bg-slate-50 dark:bg-slate-800 w-full max-w-sm">
-                   <div className="grid grid-cols-3 gap-3 text-center">
-                     <div className="p-3 bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800">
-                       <span className="text-2xl block mb-1">👤</span>
-                       <span className="text-[10px] font-black text-slate-550 dark:text-slate-400 uppercase">Tên: {kidName}</span>
-                     </div>
-                     <div className="p-3 bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800">
-                       <span className="text-2xl block mb-1">🎂</span>
-                       <span className="text-[10px] font-black text-slate-550 dark:text-slate-400 uppercase">Tuổi: {kidAge}</span>
-                     </div>
-                     <div className="p-3 bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800">
-                       <span className="text-2xl block mb-1">🦁</span>
-                       <span className="text-[10px] font-black text-slate-550 dark:text-slate-400 uppercase">Thú cưng: {favAnimal || "???"}</span>
-                     </div>
-                   </div>
-                 </div>
                </div>
              )}
 
@@ -1408,31 +1357,25 @@ export default function InteractiveTest() {
                  </div>
 
                  {currentQuestion.imagePath && (
-                   <div className="relative w-full max-w-xl mx-auto aspect-video md:max-h-[300px] flex-1 min-h-[180px] rounded-3xl overflow-hidden shadow-lg border-4 border-white dark:border-slate-855 hover:scale-[1.01] transition-transform duration-300 my-2">
+                   <div className="relative w-full max-w-xl mx-auto aspect-video md:max-h-[420px] flex-1 min-h-[220px] rounded-3xl overflow-hidden shadow-xl border-4 border-gradient-to-r from-amber-200 to-blue-200 dark:border-slate-700 hover:scale-[1.01] transition-transform duration-300 my-2">
                      <Image 
                        src={currentQuestion.imagePath} 
                        alt="Study illustration" 
                        fill 
                        className="object-cover"
-                       sizes="(max-width: 768px) 100vw, 600px"
+                       sizes="(max-width: 768px) 100vw, 700px"
                        priority
                      />
                    </div>
                  )}
 
-                 {/* Reward list for kids */}
-                 <div className="mt-4 bg-slate-50 dark:bg-slate-850 border border-slate-100 dark:border-slate-800 p-3 rounded-2xl">
-                   <p className="text-[10px] font-black text-slate-450 dark:text-slate-500 uppercase tracking-wider mb-2">Từ vựng con đã bật âm đúng: </p>
-                   <div className="flex flex-wrap gap-2">
-                     {keywordsMentioned.length === 0 ? (
-                       <span className="text-xs font-bold text-slate-400 dark:text-slate-555 italic">Con hãy nói các từ khóa trong tranh để nhận sticker nhé! ✨</span>
-                     ) : (
-                       keywordsMentioned.map((word) => (
-                         <span key={word} className="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-350 border-2 border-emerald-200 dark:border-emerald-900 text-xs font-black px-3.5 py-1 rounded-full flex items-center gap-1.5 animate-bounce-subtle">
-                           <span>⭐</span> {word}
-                         </span>
-                       ))
-                     )}
+                 {/* Simplified star counter for keywords */}
+                 <div className="mt-3 flex items-center justify-between bg-slate-50 dark:bg-slate-850 border border-slate-100 dark:border-slate-800 p-3 rounded-2xl">
+                   <span className="text-xs font-black text-slate-500 dark:text-slate-400">⭐ Từ vựng đạt:</span>
+                   <div className="flex items-center gap-1">
+                     <span className="text-lg font-black text-amber-500">{keywordsMentioned.length}</span>
+                     <span className="text-xs font-bold text-slate-400">từ</span>
+                     {keywordsMentioned.length > 0 && <span className="text-lg animate-bounce">🌟</span>}
                    </div>
                  </div>
                </div>
@@ -1479,11 +1422,11 @@ export default function InteractiveTest() {
                          let optionClass = "bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-blue-400 dark:hover:border-blue-500 hover:translate-y-[-2px]";
                          if (mcqAnswered) {
                            if (isCorrectOption) {
-                             optionClass = "bg-emerald-50 dark:bg-emerald-950/30 border-2 border-emerald-400 dark:border-emerald-500 text-emerald-700 dark:text-emerald-300 scale-105 shadow-md shadow-emerald-100 dark:shadow-emerald-950/20";
+                             optionClass = "bg-emerald-100 dark:bg-emerald-950/50 border-emerald-500 text-emerald-800 dark:text-emerald-300 scale-[1.02] shadow-md z-10";
                            } else if (isSelected) {
-                             optionClass = "bg-rose-50 dark:bg-rose-950/30 border-2 border-rose-400 dark:border-rose-500 text-rose-700 dark:text-rose-355 scale-95 opacity-80";
+                             optionClass = "bg-rose-100 dark:bg-rose-950/50 border-rose-400 text-rose-700 dark:text-rose-300 opacity-60";
                            } else {
-                             optionClass = "bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 text-slate-400 dark:text-slate-500 opacity-60";
+                             optionClass = "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-400 opacity-40";
                            }
                          }
 
@@ -1493,14 +1436,14 @@ export default function InteractiveTest() {
                              type="button"
                              onClick={() => handleMcqSelect(idx)}
                              disabled={mcqAnswered}
-                             className={`w-full p-4 rounded-2xl font-black text-sm md:text-base transition-all duration-200 cursor-pointer shadow-sm flex items-center justify-between ${optionClass}`}
+                             className={`w-full px-5 py-4 rounded-2xl font-black text-base md:text-lg transition-all duration-200 cursor-pointer shadow-sm flex items-center justify-between ${optionClass}`}
                            >
                              <span>{option}</span>
                              {mcqAnswered && isCorrectOption && (
-                               <span className="text-xl shrink-0 ml-2 animate-bounce">✅</span>
+                               <span className="text-2xl shrink-0 ml-2 animate-bounce">✅</span>
                              )}
                              {mcqAnswered && isSelected && !isCorrectOption && (
-                               <span className="text-xl shrink-0 ml-2">❌</span>
+                               <span className="text-2xl shrink-0 ml-2">❌</span>
                              )}
                            </button>
                          );
@@ -1515,49 +1458,82 @@ export default function InteractiveTest() {
                <div className="flex-1 flex flex-col justify-center items-center min-h-0">
                  <h3 className="font-extrabold text-indigo-805 dark:text-indigo-300 mb-4 flex items-center gap-2 text-sm uppercase tracking-wider">
                    <span className="text-lg">✍️</span>
-                   Thử thách đánh vần chữ [{writingTaskIndex + 1}/2]
+                   Thử thách đánh vần [{writingTaskIndex + 1}/2]
                  </h3>
 
-                 <div className="bg-white dark:bg-slate-855 border-4 border-indigo-200 dark:border-slate-700 rounded-3xl p-6 shadow-md w-full max-w-md flex flex-col items-center text-center">
-                   <div className="relative w-24 h-24 rounded-full bg-indigo-50 dark:bg-slate-800 border-2 border-indigo-200 flex items-center justify-center text-5xl mb-4 shadow-inner">
+                 <div className="bg-white dark:bg-slate-855 border-4 border-indigo-200 dark:border-slate-700 rounded-3xl p-5 md:p-6 shadow-md w-full max-w-md flex flex-col items-center text-center">
+                   <div className="relative w-20 h-20 md:w-24 md:h-24 rounded-full bg-indigo-50 dark:bg-slate-800 border-2 border-indigo-200 flex items-center justify-center text-4xl md:text-5xl mb-4 shadow-inner">
                      <span className="absolute inset-0 rounded-full border-4 border-dashed border-indigo-300/40 animate-spin" style={{ animationDuration: "12s" }} />
                      <span className="animate-bounce" style={{ animationDuration: "2.5s" }}>
                        {writingTaskIndex === 0 ? "🐒" : "🍌"}
                      </span>
                    </div>
                    
-                   <p className="text-slate-750 dark:text-slate-200 font-extrabold text-sm md:text-base leading-relaxed mb-6 bg-slate-50 dark:bg-slate-800 px-4 py-2.5 rounded-2xl border border-slate-100 dark:border-slate-750 w-full text-center">
-                     Cô Lily hỏi: "{activeSpelling[writingTaskIndex].prompt}"
+                   <p className="text-slate-750 dark:text-slate-200 font-extrabold text-sm md:text-base leading-relaxed mb-4 bg-slate-50 dark:bg-slate-800 px-4 py-2.5 rounded-2xl border border-slate-100 dark:border-slate-750 w-full text-center">
+                     Cô Lily hỏi: &quot;{activeSpelling[writingTaskIndex].prompt}&quot;
                    </p>
 
-                   <form onSubmit={handleWritingSubmit} className="w-full">
-                     <input 
-                       type="text" 
-                       value={typedWord}
-                       onChange={(e) => setTypedWord(e.target.value)}
-                       disabled={writingSubmitted}
-                       placeholder="Gõ từ tại đây..."
-                       className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-2 border-indigo-200 dark:border-indigo-750 rounded-2xl font-black text-center text-2xl text-indigo-650 dark:text-indigo-300 placeholder-slate-400 focus:outline-none focus:border-indigo-400 dark:focus:border-indigo-500 focus:bg-white dark:focus:bg-slate-855 transition-all shadow-inner uppercase tracking-widest"
-                       autoComplete="off"
-                       autoCorrect="off"
-                       autoFocus
-                     />
+                   {/* Answer zone — where selected letters appear */}
+                   <div className={`answer-zone w-full mb-4 ${selectedLetters.length > 0 ? "has-letters" : ""}`}>
+                     {selectedLetters.length === 0 ? (
+                       <span className="text-xs font-bold text-slate-400 italic">
+                         Bấm vào các chữ cái bên dưới để ghép từ... ✨
+                       </span>
+                     ) : (
+                       selectedLetters.map((tile) => (
+                         <button
+                           key={`ans-${tile.id}`}
+                           onClick={() => !writingSubmitted && handleAnswerLetterTap(tile)}
+                           className="letter-tile in-answer"
+                           type="button"
+                           disabled={writingSubmitted}
+                         >
+                           {tile.letter}
+                         </button>
+                       ))
+                     )}
+                   </div>
 
+                   {/* Available letter tiles */}
+                   <div className="flex flex-wrap gap-2.5 justify-center mb-4">
+                     {availableLetters.map((tile) => (
+                       <button
+                         key={`avail-${tile.id}`}
+                         onClick={() => handleLetterTileTap(tile)}
+                         className="letter-tile"
+                         type="button"
+                         disabled={writingSubmitted}
+                       >
+                         {tile.letter}
+                       </button>
+                     ))}
+                   </div>
+
+                   {/* Action buttons */}
+                   <form onSubmit={handleWritingSubmit} className="w-full flex gap-2.5">
+                     <button
+                       type="button"
+                       onClick={handleResetLetters}
+                       disabled={selectedLetters.length === 0 || writingSubmitted}
+                       className="btn-3d-gray px-3 py-3 text-xs font-black flex items-center gap-1 flex-1"
+                     >
+                       <RotateCcw className="w-4 h-4" /> Xếp lại
+                     </button>
                      <button
                        type="submit"
-                       disabled={!typedWord.trim() || writingSubmitted}
-                       className="w-full mt-4 btn-3d-blue py-3.5 font-extrabold text-base flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 cursor-pointer"
+                       disabled={selectedLetters.length === 0 || writingSubmitted}
+                       className="btn-3d-blue py-3 font-extrabold text-sm flex items-center justify-center gap-2 flex-[2] disabled:opacity-50 cursor-pointer"
                      >
-                       Nộp bài viết 🚀
+                       Nộp bài 🚀
                      </button>
                    </form>
 
                    {writingSubmitted && (
                      <div className="mt-4 animate-bounce-subtle text-xs font-black">
-                       {typedWord.toLowerCase().trim() === activeSpelling[writingTaskIndex].correctWord.toLowerCase().trim() ? (
-                         <span className="text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 px-3 py-1.5 rounded-full border border-emerald-250">🎉 Xuất sắc! Con đã viết chính xác rồi!</span>
+                       {selectedLetters.map(t => t.letter).join("").toLowerCase() === activeSpelling[writingTaskIndex].correctWord.toLowerCase() ? (
+                         <span className="text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 px-3 py-1.5 rounded-full border border-emerald-250">🎉 Xuất sắc! Con đã ghép đúng rồi!</span>
                        ) : (
-                         <span className="text-rose-500 dark:text-rose-450 bg-rose-50 dark:bg-rose-950/20 px-3 py-1.5 rounded-full border border-rose-250">✍️ Con viết gần đúng rồi, cô đang chấm điểm nhé!</span>
+                         <span className="text-rose-500 dark:text-rose-450 bg-rose-50 dark:bg-rose-950/20 px-3 py-1.5 rounded-full border border-rose-250">✍️ Gần đúng rồi, cô đang chấm điểm nhé!</span>
                        )}
                      </div>
                    )}
@@ -1567,35 +1543,7 @@ export default function InteractiveTest() {
             </div>
 
             {/* Right Column: Trò chuyện cùng cô */}
-            <div className={`lg:col-span-6 flex flex-col min-h-0 lg:border-l-4 border-slate-100 dark:border-slate-800 lg:pl-6 ${activeTab === "chat" ? "flex" : "hidden lg:flex"}`}>
-             
-             {/* Compact material preview helper inside Chat tab - Hidden on Desktop */}
-             {stage !== "warmup" && (
-               <div className="bg-amber-50/80 dark:bg-slate-850/80 border border-amber-200 dark:border-slate-800 p-2.5 rounded-2xl mb-3 flex items-center justify-between gap-3 shrink-0 select-none shadow-sm lg:hidden">
-                 <div className="flex items-center gap-2 min-w-0">
-                   <span className="text-xl shrink-0">
-                     {stage === "picture" ? "🖼️" : stage === "reading" ? "📖" : "✍️"}
-                   </span>
-                   <div className="text-left min-w-0">
-                     <p className="text-[9px] font-black uppercase text-slate-500 tracking-wider">Nhiệm vụ của con:</p>
-                     <p className="text-xs font-black text-slate-705 dark:text-slate-200 truncate">
-                       {stage === "picture" 
-                         ? `Xem Bức tranh tả từ số ${pictureIndex + 1}` 
-                         : stage === "reading" 
-                         ? (showMcq ? "Trả lời câu hỏi trắc nghiệm đọc hiểu" : "Đọc to câu chuyện truyện dài") 
-                         : `Đánh vần từ: "${activeSpelling[writingTaskIndex].correctWord.substring(0, 1)}..."`}
-                     </p>
-                   </div>
-                 </div>
-                 <button
-                   type="button"
-                   onClick={() => setActiveTab("progress")}
-                   className="px-3.5 py-1.5 bg-amber-405 hover:bg-amber-500 text-amber-950 font-black text-[10px] uppercase rounded-xl border-b-3 border-amber-600 transition-all shrink-0 cursor-pointer"
-                 >
-                   Xem Tranh/Bài học 🔍
-                 </button>
-               </div>
-             )}
+            <div className="lg:col-span-6 flex flex-col min-h-0 lg:border-l-4 border-slate-100 dark:border-slate-800 lg:pl-6 hidden lg:flex">
 
               {/* Dialogue exchange box (auto scroll) */}
               <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0 bg-slate-50 dark:bg-slate-950/40 rounded-2xl border border-slate-100 dark:border-slate-800">
@@ -1658,12 +1606,12 @@ export default function InteractiveTest() {
         </div>
       </div>
 
-      {/* Shared Bottom Control Panel */}
+      {/* Simplified Bottom Control Panel */}
       <div className="bg-white dark:bg-slate-900 border-t-4 border-slate-150 dark:border-slate-800 p-3 md:p-4 rounded-t-3xl shadow-lg shrink-0 select-none">
-        <div className="max-w-6xl mx-auto flex flex-col gap-2.5">
+        <div className="max-w-6xl mx-auto flex flex-col gap-2">
 
           {/* Practice Mode Vocabulary Hints Card */}
-          {showVocabularyHint && interactiveMode === "practice" && (
+          {showVocabularyHint && (
             <div className="bg-amber-50 dark:bg-amber-955/20 border-2 border-dashed border-amber-300 dark:border-amber-905 rounded-2xl p-3 text-left animate-bounce-subtle shrink-0">
               <div className="flex items-center gap-2 mb-1.5">
                 <span className="text-lg">💡</span>
@@ -1684,93 +1632,41 @@ export default function InteractiveTest() {
             </div>
           )}
           
-          {/* Real-time transcript / Soundwave display */}
-          <div className="bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 px-4 py-2.5 rounded-2xl h-14 flex items-center justify-between overflow-hidden">
-            {isRecording ? (
-              <div className="flex items-center gap-3 w-full">
-                <Soundwave />
-                <div className="flex-1 text-left min-w-0">
-                  <p className="text-[10px] font-black text-rose-500 uppercase tracking-wider mb-0.5 animate-pulse">Con đang nói:</p>
-                  <p className="text-sm font-black text-slate-705 dark:text-slate-300 truncate">
-                    {realtimeTranscript || "Hãy nói đi con, cô đang nghe nè... 🎤"}
-                  </p>
+          {/* Transcript + Mic button row */}
+          <div className="flex items-center gap-3">
+            {/* Transcript display */}
+            <div className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 px-4 py-2.5 rounded-2xl h-14 flex items-center overflow-hidden">
+              {isRecording ? (
+                <div className="flex items-center gap-3 w-full">
+                  <Soundwave />
+                  <div className="flex-1 text-left min-w-0">
+                    <p className="text-[10px] font-black text-rose-500 uppercase tracking-wider mb-0.5 animate-pulse">Con đang nói:</p>
+                    <p className="text-sm font-black text-slate-705 dark:text-slate-300 truncate">
+                      {realtimeTranscript || "Hãy nói đi con, cô đang nghe nè... 🎤"}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <div className="w-full flex items-center justify-center text-center">
-                <p className="text-xs md:text-sm font-black text-slate-550 dark:text-slate-400">
+              ) : (
+                <p className="text-xs md:text-sm font-black text-slate-550 dark:text-slate-400 w-full text-center">
                   {stage === "writing" 
-                    ? "Con hãy gõ câu trả lời vào ô nhập liệu nhé! ✍️" 
+                    ? "Bấm chữ cái để ghép từ ở trên nhé! ✍️" 
                     : showMcq 
-                    ? "Con hãy chọn một đáp án trắc nghiệm ở trên nhé! 🧩" 
-                    : "Micro đã tắt. Bấm nút dưới để trả lời cô Lily. 🎤"}
+                    ? "Chọn đáp án trắc nghiệm ở trên nhé! 🧩" 
+                    : isRecording 
+                    ? "Con cứ nói đi, cô sẽ tự nộp bài ⚡"
+                    : "Bấm nút 🎤 để nói với cô Lily"}
                 </p>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
 
-          {/* Bottom Row containing controls and main action button */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-            
-            {/* Left side: Voice Mode Switcher & Auto Mic (hidden in writing stage or mcq) */}
-            {stage !== "writing" && !showMcq ? (
-              <div className="flex items-center gap-2.5 bg-slate-50 dark:bg-slate-850 p-1.5 rounded-2xl border border-slate-100 dark:border-slate-805 w-full sm:w-auto justify-between sm:justify-start">
-                <div className="flex gap-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsRealtimeMode(true);
-                      stopRecording();
-                    }}
-                    disabled={!isSpeechSupported}
-                    className={`px-3 py-1.5 rounded-xl text-[10px] font-black tracking-wide uppercase transition-all cursor-pointer ${
-                      isRealtimeMode 
-                        ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-sm" 
-                        : "bg-white dark:bg-slate-800 text-slate-500 hover:text-slate-700 dark:hover:text-slate-350"
-                    }`}
-                  >
-                    Tự động (Real-time) ⚡
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsRealtimeMode(false);
-                      stopRecording();
-                    }}
-                    className={`px-3 py-1.5 rounded-xl text-[10px] font-black tracking-wide uppercase transition-all cursor-pointer ${
-                      !isRealtimeMode 
-                        ? "bg-slate-700 dark:bg-slate-650 text-white shadow-sm" 
-                        : "bg-white dark:bg-slate-800 text-slate-500 hover:text-slate-700 dark:hover:text-slate-355"
-                    }`}
-                  >
-                    Nhấn nút 🎤
-                  </button>
-                </div>
-
-                {isRealtimeMode && (
-                  <label className="flex items-center gap-1.5 cursor-pointer ml-1 select-none pr-1">
-                    <input
-                      type="checkbox"
-                      checked={autoActivateMic}
-                      onChange={(e) => setAutoActivateMic(e.target.checked)}
-                      className="w-4 h-4 rounded text-indigo-650 focus:ring-indigo-500 border-slate-300"
-                    />
-                    <span className="text-[9px] font-black uppercase text-slate-550 dark:text-slate-400">Nghe tự động</span>
-                  </label>
-                )}
-              </div>
-            ) : (
-              <div className="hidden sm:block w-1" /> // empty spacer
-            )}
-
-            {/* Center: Main Mic Trigger Button */}
+            {/* Big Mic Button */}
             <div className="shrink-0">
               {!isRecording ? (
                 <button 
                   type="button"
                   onClick={startRecording}
                   disabled={isProcessing || showMcq || stage === "writing"}
-                  className="w-18 h-18 bg-gradient-to-tr from-emerald-400 to-green-500 text-white rounded-full flex flex-col items-center justify-center hover:scale-105 active:scale-[0.95] disabled:opacity-20 disabled:hover:scale-100 transition-all shadow-md cursor-pointer border-b-6 border-emerald-700 shrink-0"
+                  className="w-16 h-16 md:w-18 md:h-18 bg-gradient-to-tr from-emerald-400 to-green-500 text-white rounded-full flex flex-col items-center justify-center hover:scale-105 active:scale-[0.95] disabled:opacity-20 disabled:hover:scale-100 transition-all shadow-md cursor-pointer border-b-6 border-emerald-700 shrink-0"
                 >
                   <Mic className="w-7 h-7 mb-0.5" />
                   <span className="text-[9px] font-black uppercase tracking-wider">NÓI</span>

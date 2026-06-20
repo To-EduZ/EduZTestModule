@@ -33,7 +33,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="w-full min-h-screen pb-20 relative bg-slate-50 dark:bg-slate-950 font-sans">
+    <div className="w-full min-h-screen pb-20 relative bg-pastel-bg dark:bg-dark-bg font-sans">
       
       {/* 1. Playful Welcome Header */}
       <header className="w-full bg-white/80 dark:bg-slate-900/85 backdrop-blur-md border-b border-slate-200/50 dark:border-slate-800 shadow-sm py-4 px-4 md:px-8 sticky top-0 z-40">
@@ -72,15 +72,6 @@ export default function Dashboard() {
               </Link>
             </div>
 
-            {/* Profile Pill */}
-            <div className="flex items-center gap-2 bg-slate-100/80 dark:bg-slate-800/80 border border-slate-200/40 dark:border-slate-700/50 rounded-full px-3 py-1.5 shadow-inner">
-              <span className="text-lg">👨‍🏫</span>
-              <div className="text-left">
-                <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase leading-none">Giáo viên</p>
-                <h4 className="text-xs font-black text-slate-750 dark:text-slate-200 leading-tight">Admin</h4>
-              </div>
-            </div>
-
             {/* AI Accent Selector */}
             <div className="relative">
               <select
@@ -113,14 +104,14 @@ export default function Dashboard() {
           <div className="relative z-10 text-white text-center">
             <span className="bg-white/10 backdrop-blur-md border border-white/20 text-white font-black text-[10px] md:text-xs px-3.5 py-1.5 rounded-full uppercase tracking-wider inline-flex items-center gap-1.5 mb-4 shadow-sm animate-bounce-subtle">
               <Sparkles className="w-3.5 h-3.5 text-yellow-300 fill-yellow-300" />
-              Module Khảo Sát Năng Lực
+              Hệ Thống Kiểm Tra Tiếng Anh
             </span>
             
             <h2 className="text-3xl md:text-5xl font-extrabold tracking-tight leading-tight">
-              Khảo Sát Đầu Vào<br className="hidden sm:inline" /> Bằng Trí Tuệ Nhân Tạo
+              Bài Kiểm Tra Đầu Vào<br className="hidden sm:inline" /> Thông Minh
             </h2>
             <p className="text-sm md:text-lg font-bold text-slate-100/95 mt-4 leading-relaxed max-w-2xl mx-auto">
-              Sử dụng AI để đánh giá năng lực tiếng Anh đa chiều một cách trực quan, nhanh chóng và chính xác. Tối ưu hóa phân loại học sinh với Adaptive Testing.
+              Giúp các bé đánh giá trình độ tiếng Anh một cách vui nhộn, tự nhiên và nhanh chóng thông qua trò chuyện trực tiếp với cô giáo AI và các câu hỏi thông minh!
             </p>
           </div>
         </section>
