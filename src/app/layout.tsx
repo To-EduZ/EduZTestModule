@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Nunito } from "next/font/google";
 import "./globals.css";
+import { Providers } from "@/components/Providers";
 
 const nunito = Nunito({
   variable: "--font-nunito",
@@ -42,7 +43,9 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col bg-pastel-bg dark:bg-dark-bg text-slate-800 dark:text-slate-200 font-sans selection:bg-sunbeam selection:text-amber-950 transition-colors duration-300">
-        {children}
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   );

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { ChevronRight, Home, PieChart, Users, TrendingUp, Target, Award, Search } from "lucide-react";
+import { ChevronRight, Home, PieChart, Users, TrendingUp, Target, Award, Search, Sparkles } from "lucide-react";
 import AnalyticsFilterBar from "@/components/AnalyticsFilterBar";
 import BarChartSVG from "@/components/BarChartSVG";
 import LineChartSVG from "@/components/LineChartSVG";
@@ -295,12 +295,20 @@ export default function AnalyticsDashboard() {
               </h1>
               <p className="text-slate-500 font-medium mt-1">Phân tích chuyên sâu dữ liệu bài kiểm tra đầu vào và lộ trình phát triển.</p>
             </div>
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full px-4 py-1.5 flex items-center gap-2 shadow-sm">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-              </span>
-              <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Dữ liệu cập nhật trực tiếp</span>
+            <div className="flex flex-wrap items-center gap-3">
+              <Link href="/dashboard/mascots">
+                <button className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-extrabold px-5 py-2 rounded-full shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer">
+                  <Sparkles className="w-4 h-4 text-amber-300 fill-amber-300 animate-pulse" />
+                  Quản lý Mascot AI
+                </button>
+              </Link>
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full px-4 py-1.5 flex items-center gap-2 shadow-sm">
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                </span>
+                <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Dữ liệu cập nhật trực tiếp</span>
+              </div>
             </div>
           </div>
         </div>
