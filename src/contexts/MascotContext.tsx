@@ -8,6 +8,7 @@ interface MascotContextType {
   currentMascot: Mascot;
   setMascotId: (id: string) => void;
   availableMascots: Mascot[];
+  refreshMascots: () => Promise<void>;
 }
 
 const MascotContext = createContext<MascotContextType | undefined>(undefined);
@@ -17,24 +18,28 @@ export const MascotProvider = ({ children }: { children: ReactNode }) => {
   const [availableMascots, setAvailableMascots] = useState<Mascot[]>(MASCOTS);
   const [isLoading, setIsLoading] = useState(true);
 
+  const fetchMascots = async () => {
+    try {
+      const res = await fetch("/api/mascots");
+      const json = await res.json();
+      if (json.success && json.data && json.data.length > 0) {
+        setAvailableMascots(json.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch mascots from DB, using fallback", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Load mascots from DB and init localStorage preference
   useEffect(() => {
-    const fetchMascots = async () => {
-      try {
-        const res = await fetch("/api/mascots");
-        const json = await res.json();
-        if (json.success && json.data && json.data.length > 0) {
-          setAvailableMascots(json.data);
-        }
-      } catch (err) {
-        console.error("Failed to fetch mascots from DB, using fallback", err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
     fetchMascots();
   }, []);
+
+  const refreshMascots = async () => {
+    await fetchMascots();
+  };
 
   useEffect(() => {
     if (isLoading) return;
@@ -54,7 +59,7 @@ export const MascotProvider = ({ children }: { children: ReactNode }) => {
   const currentMascot = availableMascots.find((m) => m.id === currentMascotId) || availableMascots[0];
 
   return (
-    <MascotContext.Provider value={{ currentMascot, setMascotId, availableMascots }}>
+    <MascotContext.Provider value={{ currentMascot, setMascotId, availableMascots, refreshMascots }}>
       {children}
     </MascotContext.Provider>
   );
