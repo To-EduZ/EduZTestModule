@@ -89,10 +89,10 @@ export default function CambridgeTestPage() {
   useEffect(() => {
     const fetchQuestions = async () => {
       try {
-        const res = await fetch("/api/cambridge-questions");
+        const res = await fetch("/api/test-papers/delivery?moduleType=yle");
         const json = await res.json();
-        if (json.success && json.data) {
-          setQuestions(json.data);
+        if (json.success && json.data && json.data.questions) {
+          setQuestions(json.data.questions);
         }
       } catch (err) {
         console.error("Failed to fetch questions:", err);

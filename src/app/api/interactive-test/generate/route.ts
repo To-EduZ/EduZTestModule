@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import Question from "@/models/Question";
+import AppConfig from "@/models/AppConfig";
+import TestPaper from "@/models/TestPaper";
 import { callGemini, safeJsonParse } from "@/lib/geminiClient";
 
 const fallbackQuestions = [
@@ -36,18 +38,47 @@ export async function GET(req: NextRequest) {
   try {
     let picQuestions: any[] = [];
 
-    // 1. Attempt to load from MongoDB
+    // 1. Get Questions based on TestPaper Delivery System
     const { isFallback } = await connectToDatabase();
     if (!isFallback) {
       try {
-        const dbQuestions = await Question.find({
-          imagePath: { $exists: true, $ne: "" },
-        });
+        let config = await AppConfig.findOne({ singletonId: "global_config" }).lean();
+        if (!config) {
+          config = await AppConfig.create({
+            singletonId: "global_config",
+            interactiveMode: "random",
+            interactiveFixedTestId: "",
+            yleMode: "random",
+            yleFixedTestId: "",
+          });
+        }
+
+        const mode = config.interactiveMode;
+        const fixedId = config.interactiveFixedTestId;
+        let targetPaper = null;
+
+        if (mode === "fixed" && fixedId) {
+          targetPaper = await TestPaper.findOne({ id: fixedId, moduleType: "interactive" }).lean();
+        } else {
+          const publishedPapers = await TestPaper.find({ moduleType: "interactive", status: "published" }).lean();
+          if (publishedPapers.length > 0) {
+            const randomIndex = Math.floor(Math.random() * publishedPapers.length);
+            targetPaper = publishedPapers[randomIndex];
+          }
+        }
+
+        let dbQuestions;
+        if (targetPaper && targetPaper.questionIds && targetPaper.questionIds.length > 0) {
+          dbQuestions = await Question.find({ id: { $in: targetPaper.questionIds }, imagePath: { $exists: true, $ne: "" } });
+        } else {
+          dbQuestions = await Question.find({ imagePath: { $exists: true, $ne: "" } });
+        }
+
         if (dbQuestions && dbQuestions.length > 0) {
           picQuestions = dbQuestions;
         }
       } catch (dbErr) {
-        console.warn("⚠️ Không thể query collections trên MongoDB. Sử dụng bộ câu hỏi tĩnh dự phòng.");
+        console.warn("⚠️ Không thể query collections trên MongoDB. Sử dụng bộ câu hỏi tĩnh dự phòng.", dbErr);
       }
     }
 
@@ -55,10 +86,10 @@ export async function GET(req: NextRequest) {
       picQuestions = fallbackQuestions;
     }
 
-    // 2. Select 2 random pictures
+    // 2. Select up to 2 random pictures from the designated test paper
     const shuffled = [...picQuestions].sort(() => 0.5 - Math.random());
     const selectedPictures = shuffled.slice(0, 2);
-    if (selectedPictures.length < 2) {
+    if (selectedPictures.length < 2 && picQuestions.length > 0) {
       selectedPictures.push(picQuestions[0]);
     }
 

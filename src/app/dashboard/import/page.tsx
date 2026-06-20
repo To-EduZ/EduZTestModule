@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import YLEImport from "./components/YLEImport";
+import TestPaperManager from "./components/TestPaperManager";
 import {
   ArrowLeft,
   Upload,
@@ -64,7 +65,7 @@ interface SubQuestionInput {
 }
 
 export default function CambridgeImportPage() {
-  const [activeTab, setActiveTab] = useState<"interactive" | "yle">("interactive");
+  const [activeTab, setActiveTab] = useState<"interactive" | "yle" | "test-papers">("interactive");
   
   // Questions list state
   const [questions, setQuestions] = useState<QuestionData[]>([]);
@@ -822,6 +823,16 @@ export default function CambridgeImportPage() {
             >
               🏆 Cambridge YLE (MCQ)
             </button>
+            <button 
+              onClick={() => setActiveTab("test-papers")}
+              className={`px-4 md:px-6 py-2 rounded-xl text-xs md:text-sm font-black transition-all ${
+                activeTab === "test-papers" 
+                  ? "bg-white dark:bg-slate-700 shadow-md text-emerald-600 dark:text-emerald-400 scale-105" 
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              📑 Quản lý Đề Thi
+            </button>
           </div>
         </div>
       </header>
@@ -830,6 +841,8 @@ export default function CambridgeImportPage() {
       <main className="flex-1 max-w-6xl w-full mx-auto p-4 md:p-6 animate-slide-up mt-4">
         {activeTab === "yle" ? (
           <YLEImport />
+        ) : activeTab === "test-papers" ? (
+          <TestPaperManager />
         ) : (
           <div className="space-y-6">
         
