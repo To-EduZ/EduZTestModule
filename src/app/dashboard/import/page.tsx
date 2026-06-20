@@ -847,507 +847,22 @@ export default function CambridgeImportPage() {
           </div>
           <div>
             <span className="bg-indigo-100 text-indigo-700 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-md inline-block">
-              Hệ thống nhập học liệu Số hóa PDF
+              Hệ thống Số hóa Đề thi
             </span>
             <h1 className="text-2xl md:text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tight mt-1">
-              Cambridge YLE Learning Bank Digitalizer
+              Công cụ Tạo Bài Tập Tương Tác từ Ảnh
             </h1>
             <p className="text-xs font-bold text-slate-500 mt-1 leading-relaxed">
-              Trang công cụ dành riêng cho Quản trị viên của <strong className="text-indigo-600">HUB Xanh Digital University</strong> để cắt bóc tách đề thi Cambridge gốc (.pdf) thành các câu hỏi AI tương tác sinh động, lưu trữ đám mây Cloudinary và đồng bộ MongoDB.
+              Dành cho Giáo viên để cắt bóc tách ảnh đề thi gốc thành các bài kiểm tra tương tác sinh động với Cô giáo AI.
             </p>
           </div>
         </div>
 
         {/* Form and Preview Grid */}
-        <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <section className="flex flex-col gap-6 items-stretch">
           
-          {/* LEFT: Import Form (8 cols on large) */}
-          <div className="bg-white dark:bg-slate-900 rounded-3xl border-4 border-slate-100 dark:border-slate-700 p-4 md:p-6 md:p-8 shadow-xl lg:col-span-8 flex flex-col gap-4 md:gap-6">
-            {isEditing && (
-              <div className="bg-amber-50 dark:bg-slate-850 border-2 border-amber-300 dark:border-amber-900 text-amber-800 dark:text-amber-300 rounded-2xl p-4 flex items-center justify-between animate-bounce-subtle shadow-sm select-none">
-                <div className="flex items-center gap-2.5">
-                  <span className="text-2xl">✏️</span>
-                  <div>
-                    <h4 className="text-xs font-black uppercase tracking-wider">Đang ở chế độ chỉnh sửa học liệu</h4>
-                    <p className="text-[11px] font-bold mt-0.5 opacity-80">Mã ID đang sửa: <strong className="font-mono text-xs text-indigo-600 dark:text-indigo-400">{editingId}</strong></p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={resetForm}
-                  className="btn-3d-gray px-3 py-1.5 text-[10px] font-black uppercase tracking-wider hover:scale-105 active:translate-y-0.5 cursor-pointer"
-                >
-                  Hủy chỉnh sửa
-                </button>
-              </div>
-            )}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-3">
-              <h3 className="text-xl font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                <PenTool className="w-6 h-6 text-indigo-500" />
-                {isEditing ? "Cập Nhật Học Liệu & Kịch Bản AI ✏️" : "Siêu dữ liệu Học liệu & Kịch bản AI"}
-              </h3>
-              
-              <button
-                type="button"
-                onClick={handleAutoDigitalize}
-                disabled={isAnalyzing || isSubmitting || !imageFile}
-                className={`px-4 py-2.5 text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition-all ${
-                  !imageFile
-                    ? "btn-3d-gray opacity-60 cursor-not-allowed"
-                    : "btn-3d-purple animate-pulse hover:scale-105 active:translate-y-0.5"
-                }`}
-                title={!imageFile ? "Vui lòng chọn hoặc kéo thả tệp hình ảnh trước" : "Bấm để AI tự động phân tích và điền siêu dữ liệu"}
-              >
-                {isAnalyzing ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    Đang bóc tách... 🤖
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-3.5 h-3.5" />
-                    Tự động điền AI ✨
-                  </>
-                )}
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-              
-              {/* Row 1: ID, Level (Part is auto-filled and hidden) */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                
-                <div>
-                  <label className="block text-slate-700 dark:text-slate-305 font-extrabold text-xs uppercase tracking-wide mb-1.5" htmlFor="qId">
-                    Question ID <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    id="qId"
-                    type="text"
-                    required
-                    disabled={isEditing}
-                    value={qId}
-                    onChange={(e) => setQId(e.target.value)}
-                    placeholder="Ví dụ: ST_P1_03"
-                    className={`w-full rounded-2xl border-2 p-3 text-sm font-extrabold outline-none transition-colors ${
-                      isEditing
-                        ? "bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed font-sans"
-                        : "border-slate-200 dark:border-slate-700 focus:border-indigo-400 dark:focus:border-indigo-500 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900"
-                    }`}
-                  />
-                  <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold block mt-1">
-                    {isEditing ? "Không thể thay đổi Mã ID khi đang chỉnh sửa" : "Mã duy nhất: Cấp độ_Phần_Số câu (Ví dụ: ST_P1_03)"}
-                  </span>
-                </div>
-
-                <div>
-                  <label className="block text-slate-700 dark:text-slate-305 font-extrabold text-xs uppercase tracking-wide mb-1.5" htmlFor="level">
-                    Cấp độ (Level) <span className="text-rose-500">*</span>
-                  </label>
-                  {(() => {
-                    const detectedPrefix = qId.trim().toUpperCase().split("_")[0];
-                    const isLevelAutoFilled = ["ST", "MV", "FL"].includes(detectedPrefix);
-                    return (
-                      <>
-                        <select
-                          id="level"
-                          value={level}
-                          onChange={(e) => setLevel(e.target.value as any)}
-                          className="w-full rounded-2xl border-2 border-slate-200 dark:border-slate-700 focus:border-indigo-400 dark:focus:border-indigo-500 p-3 text-sm font-extrabold outline-none transition-colors bg-white dark:bg-slate-900 cursor-pointer text-slate-700 dark:text-slate-200"
-                        >
-                          <option value="Starters">Starters 🦛</option>
-                          <option value="Movers">Movers 🐒</option>
-                          <option value="Flyers">Flyers 🦁</option>
-                        </select>
-                        <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold block mt-1">
-                          {isLevelAutoFilled ? "Tự động chọn theo mã prefix ID (có thể chỉnh sửa thủ công)" : "Tự điền dựa trên tiền tố ID (ST, MV, FL)"}
-                        </span>
-                      </>
-                    );
-                  })()}
-                </div>
-
-              </div>
-
-              {/* Row 2: Type, Topic & Difficulty */}
-              {/* Row 2: Type, Topic & Difficulty */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <div className="flex justify-between items-center mb-1.5">
-                    <label className="block text-slate-700 dark:text-slate-305 font-extrabold text-xs uppercase tracking-wide text-left" htmlFor="type">
-                      Loại bối cảnh <span className="text-rose-500">*</span>
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => setShowTypeManager(true)}
-                      className="text-[10px] font-black text-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center gap-0.5 transition-colors cursor-pointer"
-                    >
-                      ⚙️ Quản lý danh mục
-                    </button>
-                  </div>
-                  <select
-                    id="type"
-                    value={type}
-                    onChange={(e) => setType(e.target.value)}
-                    className="w-full rounded-2xl border-2 border-slate-200 dark:border-slate-700 focus:border-indigo-400 dark:focus:border-indigo-500 p-3 text-sm font-extrabold text-slate-700 dark:text-slate-200 outline-none transition-colors bg-white dark:bg-slate-900 cursor-pointer"
-                  >
-                    {contextTypes.map((t) => (
-                      <option key={t.key} value={t.key}>
-                        {t.name}
-                      </option>
-                    ))}
-                    {contextTypes.length === 0 && (
-                      <option value="Scene_Description">Scene Description (Mô tả tranh bối cảnh)</option>
-                    )}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-slate-700 dark:text-slate-305 font-extrabold text-xs uppercase tracking-wide mb-1.5" htmlFor="topic">
-                    Chủ đề học liệu (Topic) <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    id="topic"
-                    type="text"
-                    required
-                    value={topic}
-                    onChange={(e) => setTopic(e.target.value)}
-                    placeholder="Ví dụ: Family, Animals, School life..."
-                    className="w-full rounded-2xl border-2 border-slate-200 dark:border-slate-700 focus:border-indigo-400 dark:focus:border-indigo-500 p-3 text-sm font-extrabold text-slate-700 dark:text-slate-200 outline-none transition-colors bg-white dark:bg-slate-900"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-slate-700 dark:text-slate-305 font-extrabold text-xs uppercase tracking-wide mb-1.5" htmlFor="difficulty">
-                    Độ khó (Difficulty) <span className="text-rose-500">*</span>
-                  </label>
-                  <select
-                    id="difficulty"
-                    value={difficulty}
-                    onChange={(e) => setDifficulty(e.target.value as any)}
-                    className="w-full rounded-2xl border-2 border-slate-200 dark:border-slate-700 focus:border-indigo-400 dark:focus:border-indigo-500 p-3 text-sm font-extrabold text-slate-700 dark:text-slate-200 outline-none transition-colors bg-white dark:bg-slate-900 cursor-pointer"
-                  >
-                    <option value="Easy">Easy (Dễ)</option>
-                    <option value="Medium">Medium (Trung bình)</option>
-                    <option value="Hard">Hard (Khó)</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Row 3: Context Tags */}
-              <div>
-                <label className="block text-slate-700 dark:text-slate-305 font-extrabold text-xs uppercase tracking-wide mb-1.5" htmlFor="tags">
-                  Từ khóa bối cảnh (Context Tags)
-                </label>
-                <input
-                  id="tags"
-                  type="text"
-                  value={contextTags}
-                  onChange={(e) => setContextTags(e.target.value)}
-                  placeholder="beach, animals, family, swimming, sunny"
-                  className="w-full rounded-2xl border-2 border-slate-200 dark:border-slate-700 focus:border-indigo-400 dark:focus:border-indigo-500 p-3 text-sm font-extrabold text-slate-700 dark:text-slate-200 outline-none transition-colors bg-white dark:bg-slate-900"
-                />
-                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold block mt-1">Cách nhau bằng dấu phẩy (,)</span>
-              </div>
-
-              {/* Row 4: Speaking Questions Editor (Dynamic Question blocks) */}
-              <div className="flex flex-col gap-5 border-t border-slate-100 pt-5 mt-2">
-                <h4 className="text-sm font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-2">
-                  <Sparkles className="w-5 h-5" />
-                  Danh sách Câu hỏi Speaking trên cùng Bối cảnh ({subQuestions.length} câu)
-                </h4>
-                
-                {subQuestions.map((q, idx) => (
-                  <div key={idx} className="bg-slate-50/50 dark:bg-slate-800/30 border-2 border-slate-100 dark:border-slate-800 rounded-3xl p-4 md:p-5 flex flex-col gap-4 shadow-sm relative pt-6">
-                    <span className="absolute -top-3 left-4 bg-indigo-500 text-white text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full">
-                      Câu hỏi {idx + 1}
-                    </span>
-
-                    {subQuestions.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveSubQuestion(idx)}
-                        className="absolute top-2.5 right-2.5 text-rose-500 hover:text-rose-750 p-1.5 rounded-full hover:bg-rose-50 dark:hover:bg-rose-955/20 transition-colors cursor-pointer"
-                        title="Xóa câu hỏi con này"
-                      >
-                        <Trash2 className="w-4.5 h-4.5" />
-                      </button>
-                    )}
-                    
-                    <div>
-                      <label className="block text-slate-700 dark:text-slate-305 font-extrabold text-xs mb-1.5">
-                        Kịch bản của Giám khảo AI (English Question) {idx === 0 && <span className="text-rose-555">*</span>}
-                      </label>
-                      <input
-                        type="text"
-                        required={idx === 0}
-                        value={q.examinerScript}
-                        onChange={(e) => {
-                          const updated = [...subQuestions];
-                          updated[idx].examinerScript = e.target.value;
-                          setSubQuestions(updated);
-                        }}
-                        placeholder={`Ví dụ câu hỏi ${idx + 1}: Where is the cat? / What is the boy doing?`}
-                        className="w-full rounded-xl border-2 border-slate-200 dark:border-slate-700 p-2.5 text-xs font-extrabold text-slate-700 dark:text-slate-200 outline-none transition-colors bg-white dark:bg-slate-900"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-slate-600 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-wide mb-1.5">
-                          Từ khóa chấm điểm (Expected Keywords)
-                        </label>
-                        <input
-                          type="text"
-                          value={q.expectedKeywords}
-                          onChange={(e) => {
-                            const updated = [...subQuestions];
-                            updated[idx].expectedKeywords = e.target.value;
-                            setSubQuestions(updated);
-                          }}
-                          placeholder="Từ khóa cách nhau bằng dấu phẩy (,)"
-                          className="w-full rounded-xl border-2 border-slate-200 dark:border-slate-700 p-2.5 text-[11px] font-extrabold text-slate-700 dark:text-slate-200 outline-none transition-colors bg-white dark:bg-slate-900"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-slate-600 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-wide mb-1.5">
-                          Cấu trúc ngữ pháp đích (Target Grammar)
-                        </label>
-                        <input
-                          type="text"
-                          value={q.targetGrammar}
-                          onChange={(e) => {
-                            const updated = [...subQuestions];
-                            updated[idx].targetGrammar = e.target.value;
-                            setSubQuestions(updated);
-                          }}
-                          placeholder="Mẫu ngữ pháp cách nhau bằng dấu phẩy (,)"
-                          className="w-full rounded-xl border-2 border-slate-200 dark:border-slate-700 p-2.5 text-[11px] font-extrabold text-slate-700 dark:text-slate-200 outline-none transition-colors bg-white dark:bg-slate-900"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4 border-t border-slate-100 dark:border-slate-800 pt-3 mt-1">
-                      <div>
-                        <label className="block text-slate-600 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-wide mb-1.5">
-                          Chủ đề câu hỏi (Topic override)
-                        </label>
-                        <input
-                          type="text"
-                          value={q.topic || ""}
-                          onChange={(e) => {
-                            const updated = [...subQuestions];
-                            updated[idx].topic = e.target.value;
-                            setSubQuestions(updated);
-                          }}
-                          placeholder="Mặc định dùng chung"
-                          className="w-full rounded-xl border-2 border-slate-200 dark:border-slate-700 p-2.5 text-[11px] font-extrabold text-slate-700 dark:text-slate-200 outline-none transition-colors bg-white dark:bg-slate-900"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-slate-600 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-wide mb-1.5">
-                          Cấp độ (Level override)
-                        </label>
-                        <select
-                          value={q.level || ""}
-                          onChange={(e) => {
-                            const updated = [...subQuestions];
-                            updated[idx].level = e.target.value as any;
-                            setSubQuestions(updated);
-                          }}
-                          className="w-full rounded-xl border-2 border-slate-200 dark:border-slate-700 p-2.5 text-[11px] font-extrabold text-slate-700 dark:text-slate-200 outline-none transition-colors bg-white dark:bg-slate-900 cursor-pointer"
-                        >
-                          <option value="">Dùng chung</option>
-                          <option value="Starters">Starters 🦛</option>
-                          <option value="Movers">Movers 🐒</option>
-                          <option value="Flyers">Flyers 🦁</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-slate-600 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-wide mb-1.5">
-                          Độ khó (Difficulty override)
-                        </label>
-                        <select
-                          value={q.difficulty || ""}
-                          onChange={(e) => {
-                            const updated = [...subQuestions];
-                            updated[idx].difficulty = e.target.value as any;
-                            setSubQuestions(updated);
-                          }}
-                          className="w-full rounded-xl border-2 border-slate-200 dark:border-slate-700 p-2.5 text-[11px] font-extrabold text-slate-700 dark:text-slate-200 outline-none transition-colors bg-white dark:bg-slate-900 cursor-pointer"
-                        >
-                          <option value="">Dùng chung</option>
-                          <option value="Easy">Easy (Dễ)</option>
-                          <option value="Medium">Medium (Trung bình)</option>
-                          <option value="Hard">Hard (Khó)</option>
-                        </select>
-                      </div>
-                      <div className="md:col-span-2">
-                        <div className="flex justify-between items-center mb-1.5">
-                          <label className="block text-slate-600 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-wide">
-                            Nhóm kỹ năng
-                          </label>
-                          <button
-                            type="button"
-                            onClick={() => setShowGroupManager(true)}
-                            className="text-[9px] font-black text-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center gap-0.5 transition-colors cursor-pointer"
-                          >
-                            ⚙️ Quản lý nhóm
-                          </button>
-                        </div>
-                        <select
-                          value={
-                            skillGroups.some(g => g.code === q.groupCode && g.name === q.groupName)
-                              ? `${q.groupCode}|${q.groupName}`
-                              : (q.groupCode || q.groupName ? "custom" : "")
-                          }
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            const updated = [...subQuestions];
-                            if (val === "custom") {
-                              if (!updated[idx].groupCode) updated[idx].groupCode = "custom";
-                              if (!updated[idx].groupName) updated[idx].groupName = "Custom Category";
-                            } else if (val === "") {
-                              updated[idx].groupCode = "";
-                              updated[idx].groupName = "";
-                            } else {
-                              const [code, name] = val.split("|");
-                              updated[idx].groupCode = code;
-                              updated[idx].groupName = name;
-                            }
-                            setSubQuestions(updated);
-                          }}
-                          className="w-full rounded-xl border-2 border-slate-200 dark:border-slate-700 p-2.5 text-[11px] font-extrabold text-slate-700 dark:text-slate-200 outline-none transition-colors bg-white dark:bg-slate-900 cursor-pointer"
-                        >
-                          <option value="">Không phân nhóm (Dùng chung)</option>
-                          {skillGroups.map((g) => (
-                            <option key={g.code} value={`${g.code}|${g.name}`}>
-                              {g.code} - {g.name} {g.description ? `(${g.description})` : ""}
-                            </option>
-                          ))}
-                          <option value="custom">Khác (Tự nhập...)</option>
-                        </select>
-                      </div>
-
-                      {((q.groupCode || q.groupName) && !skillGroups.some(g => g.code === q.groupCode && g.name === q.groupName)) && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-slate-50 dark:border-slate-800/50 pt-2 mt-2 col-span-1 md:col-span-5 animate-fadeIn">
-                          <div>
-                            <label className="block text-slate-600 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-wide mb-1.5">
-                              Mã nhóm tùy chỉnh
-                            </label>
-                            <input
-                              type="text"
-                              value={q.groupCode || ""}
-                              onChange={(e) => {
-                                const updated = [...subQuestions];
-                                updated[idx].groupCode = e.target.value;
-                                setSubQuestions(updated);
-                              }}
-                              placeholder="Ví dụ: 1.1"
-                              className="w-full rounded-xl border-2 border-slate-200 dark:border-slate-700 p-2.5 text-[11px] font-extrabold text-slate-700 dark:text-slate-200 outline-none transition-colors bg-white dark:bg-slate-900"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-slate-600 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-wide mb-1.5">
-                              Tên nhóm kỹ năng tùy chỉnh
-                            </label>
-                            <input
-                              type="text"
-                              value={q.groupName || ""}
-                              onChange={(e) => {
-                                const updated = [...subQuestions];
-                                updated[idx].groupName = e.target.value;
-                                setSubQuestions(updated);
-                              }}
-                              placeholder="Ví dụ: Vocabulary"
-                              className="w-full rounded-xl border-2 border-slate-200 dark:border-slate-700 p-2.5 text-[11px] font-extrabold text-slate-700 dark:text-slate-200 outline-none transition-colors bg-white dark:bg-slate-900"
-                            />
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-
-                <button
-                  type="button"
-                  onClick={handleAddSubQuestion}
-                  className="btn-3d-indigo py-3 px-6 text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 self-start hover:scale-[1.02] cursor-pointer mt-1"
-                >
-                  <span>+ Thêm câu hỏi con</span>
-                </button>
-              </div>
-
-              {/* Mobile image selector (shows up here only on smaller screens) */}
-              <div className="lg:hidden">
-                <label className="block text-slate-700 font-extrabold text-xs uppercase tracking-wide mb-1.5">
-                  Tệp học liệu PDF hoặc ảnh minh họa <span className="text-rose-500">*</span>
-                </label>
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={triggerFileInput}
-                    className="btn-3d-gray py-3 px-4 text-xs font-black shrink-0"
-                  >
-                    Chọn ảnh hoặc PDF 📄
-                  </button>
-                  {imageFile && (
-                    <div className="flex-1 flex items-center gap-2 truncate text-xs font-bold text-slate-600 bg-slate-50 border p-2 rounded-xl">
-                      <ImageIcon className="w-4 h-4 text-indigo-500 shrink-0" />
-                      <span className="truncate">{imageFile.name}</span>
-                      <button type="button" onClick={removeImage} className="text-rose-500 hover:text-rose-700 ml-auto shrink-0">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Action tactical 3D buttons */}
-              <div className="flex gap-3 border-t border-slate-100 pt-5 mt-2">
-                <button
-                  type="button"
-                  onClick={resetForm}
-                  disabled={isSubmitting}
-                  className="btn-3d-gray px-6 py-4 text-sm font-black uppercase tracking-wider shrink-0 disabled:opacity-50"
-                >
-                  {isEditing ? "HỦY SỬA ❌" : "Xóa trắng 🗑️"}
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className={`flex-1 py-4 text-sm font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all ${
-                    isEditing ? "btn-3d-yellow text-slate-800" : "btn-3d-green"
-                  } ${
-                    isSubmitting ? "brightness-95 shadow-none translate-y-[4px]" : "hover:scale-[1.01]"
-                  }`}
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      {isEditing ? "ĐANG CẬP NHẬT DỮ LIỆU..." : "ĐANG TẢI LÊN CLOUDINARY & LƯU DB..."}
-                    </>
-                  ) : isEditing ? (
-                    <>
-                      <PenTool className="w-5 h-5" />
-                      CẬP NHẬT HỌC LIỆU 💾
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="w-5 h-5" />
-                      IMPORT INTO ASSET BANK 🚀
-                    </>
-                  )}
-                </button>
-              </div>
-
-            </form>
-          </div>
-
-          {/* RIGHT: Image drag-drop preview & guidelines (4 cols on large) */}
-          <div className="lg:col-span-4 flex flex-col gap-6">
-            
-            {/* Image Preview Box */}
+                    <div className="flex flex-col gap-6">
+{/* Image Preview Box */}
             <div className="bg-white dark:bg-slate-900 rounded-3xl border-4 border-slate-100 dark:border-slate-700 p-4 md:p-6 shadow-xl relative overflow-hidden">
               <h4 className="text-sm font-black text-slate-800 uppercase tracking-wider mb-4 flex items-center gap-1.5">
                 <ImageIcon className="w-4.5 h-4.5 text-indigo-500" />
@@ -1469,12 +984,520 @@ export default function CambridgeImportPage() {
                 </div>
               )}
             </div>
+{/* Quick PDF Extraction Instruction Guidelines */}
+            <div className="bg-white dark:bg-slate-900 rounded-3xl border-4 border-slate-100 dark:border-slate-700 p-4 md:p-6 shadow-xl">
+              <h4 className="text-sm font-black text-slate-800 uppercase tracking-wider mb-3.5 flex items-center gap-1.5">
+                <HelpCircle className="w-4.5 h-4.5 text-amber-500" />
+                Hướng dẫn cắt bóc tách từ PDF
+              </h4>
+              
+              <ul className="text-xs font-bold text-slate-500 flex flex-col gap-3 leading-relaxed">
+                <li className="flex items-start gap-2">
+                  <div className="w-5 h-5 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center text-[10px] font-black text-amber-800 shrink-0">1</div>
+                  <span>Sử dụng công cụ chụp màn hình (Snipping Tool / Lightshot) chụp sắc nét bức tranh mô tả cảnh hoặc Object Cards trong PDF đề thi Cambridge chuẩn.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <div className="w-5 h-5 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center text-[10px] font-black text-amber-800 shrink-0">2</div>
+                  <span>Đặt tên ID học liệu tương ứng cấu trúc để dễ truy xuất (Ví dụ: <code>ST_P1_03</code> là Starters Part 1 Câu 03).</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <div className="w-5 h-5 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center text-[10px] font-black text-amber-800 shrink-0">3</div>
+                  <span>Nhập kịch bản câu hỏi bản xứ và từ khóa dự kiến để giúp cô giáo AI có cơ sở tự động đánh giá phát âm cho học viên nhé!</span>
+                </li>
+              </ul>
+            </div>
+          </div>
 
-            {/* AI Sandbox Evaluation Test Card */}
+{/* LEFT: Import Form (8 cols on large) */}
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border-4 border-slate-100 dark:border-slate-700 p-4 md:p-6 md:p-8 shadow-xl flex flex-col gap-4 md:gap-6">
+            {isEditing && (
+              <div className="bg-amber-50 dark:bg-slate-850 border-2 border-amber-300 dark:border-amber-900 text-amber-800 dark:text-amber-300 rounded-2xl p-4 flex items-center justify-between animate-bounce-subtle shadow-sm select-none">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-2xl">✏️</span>
+                  <div>
+                    <h4 className="text-xs font-black uppercase tracking-wider">Đang ở chế độ chỉnh sửa học liệu</h4>
+                    <p className="text-[11px] font-bold mt-0.5 opacity-80">Mã ID đang sửa: <strong className="font-mono text-xs text-indigo-600 dark:text-indigo-400">{editingId}</strong></p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={resetForm}
+                  className="btn-3d-gray px-3 py-1.5 text-[10px] font-black uppercase tracking-wider hover:scale-105 active:translate-y-0.5 cursor-pointer"
+                >
+                  Hủy chỉnh sửa
+                </button>
+              </div>
+            )}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-3">
+              <h3 className="text-xl font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                <PenTool className="w-6 h-6 text-indigo-500" />
+                {isEditing ? "Cập Nhật Học Liệu & Kịch Bản AI ✏️" : "Siêu dữ liệu Học liệu & Kịch bản AI"}
+              </h3>
+              
+              <button
+                type="button"
+                onClick={handleAutoDigitalize}
+                disabled={isAnalyzing || isSubmitting || !imageFile}
+                className={`px-4 py-2.5 text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition-all ${
+                  !imageFile
+                    ? "btn-3d-gray opacity-60 cursor-not-allowed"
+                    : "btn-3d-purple animate-pulse hover:scale-105 active:translate-y-0.5"
+                }`}
+                title={!imageFile ? "Vui lòng chọn hoặc kéo thả tệp hình ảnh trước" : "Bấm để AI tự động phân tích và điền siêu dữ liệu"}
+              >
+                {isAnalyzing ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Đang bóc tách... 🤖
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-3.5 h-3.5" />
+                    Tự động điền AI ✨
+                  </>
+                )}
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+              
+              {/* Row 1: ID, Level (Part is auto-filled and hidden) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                
+                <div>
+                  <label className="block text-slate-700 dark:text-slate-305 font-extrabold text-xs uppercase tracking-wide mb-1.5" htmlFor="qId">
+                    Mã câu hỏi (ID) <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    id="qId"
+                    type="text"
+                    required
+                    disabled={isEditing}
+                    value={qId}
+                    onChange={(e) => setQId(e.target.value)}
+                    placeholder="Ví dụ: ST_P1_03"
+                    className={`w-full rounded-2xl border-2 p-3 text-sm font-extrabold outline-none transition-colors ${
+                      isEditing
+                        ? "bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed font-sans"
+                        : "border-slate-200 dark:border-slate-700 focus:border-indigo-400 dark:focus:border-indigo-500 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900"
+                    }`}
+                  />
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold block mt-1">
+                    {isEditing ? "Không thể thay đổi Mã ID khi đang chỉnh sửa" : "Mã duy nhất: Cấp độ_Phần_Số câu (Ví dụ: ST_P1_03)"}
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 dark:text-slate-305 font-extrabold text-xs uppercase tracking-wide mb-1.5" htmlFor="level">
+                    Cấp độ <span className="text-rose-500">*</span>
+                  </label>
+                  {(() => {
+                    const detectedPrefix = qId.trim().toUpperCase().split("_")[0];
+                    const isLevelAutoFilled = ["ST", "MV", "FL"].includes(detectedPrefix);
+                    return (
+                      <>
+                        <select
+                          id="level"
+                          value={level}
+                          onChange={(e) => setLevel(e.target.value as any)}
+                          className="w-full rounded-2xl border-2 border-slate-200 dark:border-slate-700 focus:border-indigo-400 dark:focus:border-indigo-500 p-3 text-sm font-extrabold outline-none transition-colors bg-white dark:bg-slate-900 cursor-pointer text-slate-700 dark:text-slate-200"
+                        >
+                          <option value="Starters">Starters 🦛</option>
+                          <option value="Movers">Movers 🐒</option>
+                          <option value="Flyers">Flyers 🦁</option>
+                        </select>
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold block mt-1">
+                          {isLevelAutoFilled ? "Tự động chọn theo mã prefix ID (có thể chỉnh sửa thủ công)" : "Tự điền dựa trên tiền tố ID (ST, MV, FL)"}
+                        </span>
+                      </>
+                    );
+                  })()}
+                </div>
+
+              </div>
+
+              {/* Row 2: Type, Topic & Difficulty */}
+              {/* Row 2: Type, Topic & Difficulty */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <div className="flex justify-between items-center mb-1.5">
+                    <label className="block text-slate-700 dark:text-slate-305 font-extrabold text-xs uppercase tracking-wide text-left" htmlFor="type">
+                      Phân loại bối cảnh <span className="text-rose-500">*</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowTypeManager(true)}
+                      className="text-[10px] font-black text-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center gap-0.5 transition-colors cursor-pointer"
+                    >
+                      ⚙️ Quản lý danh mục
+                    </button>
+                  </div>
+                  <select
+                    id="type"
+                    value={type}
+                    onChange={(e) => setType(e.target.value)}
+                    className="w-full rounded-2xl border-2 border-slate-200 dark:border-slate-700 focus:border-indigo-400 dark:focus:border-indigo-500 p-3 text-sm font-extrabold text-slate-700 dark:text-slate-200 outline-none transition-colors bg-white dark:bg-slate-900 cursor-pointer"
+                  >
+                    {contextTypes.map((t) => (
+                      <option key={t.key} value={t.key}>
+                        {t.name}
+                      </option>
+                    ))}
+                    {contextTypes.length === 0 && (
+                      <option value="Scene_Description">Scene Description (Mô tả tranh bối cảnh)</option>
+                    )}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 dark:text-slate-305 font-extrabold text-xs uppercase tracking-wide mb-1.5" htmlFor="topic">
+                    Chủ đề bài học <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    id="topic"
+                    type="text"
+                    required
+                    value={topic}
+                    onChange={(e) => setTopic(e.target.value)}
+                    placeholder="Ví dụ: Family, Animals, School life..."
+                    className="w-full rounded-2xl border-2 border-slate-200 dark:border-slate-700 focus:border-indigo-400 dark:focus:border-indigo-500 p-3 text-sm font-extrabold text-slate-700 dark:text-slate-200 outline-none transition-colors bg-white dark:bg-slate-900"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 dark:text-slate-305 font-extrabold text-xs uppercase tracking-wide mb-1.5" htmlFor="difficulty">
+                    Độ khó <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    id="difficulty"
+                    value={difficulty}
+                    onChange={(e) => setDifficulty(e.target.value as any)}
+                    className="w-full rounded-2xl border-2 border-slate-200 dark:border-slate-700 focus:border-indigo-400 dark:focus:border-indigo-500 p-3 text-sm font-extrabold text-slate-700 dark:text-slate-200 outline-none transition-colors bg-white dark:bg-slate-900 cursor-pointer"
+                  >
+                    <option value="Easy">Easy (Dễ)</option>
+                    <option value="Medium">Medium (Trung bình)</option>
+                    <option value="Hard">Hard (Khó)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Row 3: Context Tags */}
+              <div>
+                <label className="block text-slate-700 dark:text-slate-305 font-extrabold text-xs uppercase tracking-wide mb-1.5" htmlFor="tags">
+                  Từ khóa chung (Tags)
+                </label>
+                <input
+                  id="tags"
+                  type="text"
+                  value={contextTags}
+                  onChange={(e) => setContextTags(e.target.value)}
+                  placeholder="beach, animals, family, swimming, sunny"
+                  className="w-full rounded-2xl border-2 border-slate-200 dark:border-slate-700 focus:border-indigo-400 dark:focus:border-indigo-500 p-3 text-sm font-extrabold text-slate-700 dark:text-slate-200 outline-none transition-colors bg-white dark:bg-slate-900"
+                />
+                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold block mt-1">Cách nhau bằng dấu phẩy (,)</span>
+              </div>
+
+              {/* Row 4: Speaking Questions Editor (Dynamic Question blocks) */}
+              <div className="flex flex-col gap-5 border-t border-slate-100 pt-5 mt-2">
+                <h4 className="text-sm font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-2">
+                  <Sparkles className="w-5 h-5" />
+                  Kịch bản câu hỏi & Tiêu chí chấm điểm ({subQuestions.length} câu)
+                </h4>
+                
+                {subQuestions.map((q, idx) => (
+                  <div key={idx} className="bg-slate-50/50 dark:bg-slate-800/30 border-2 border-slate-100 dark:border-slate-800 rounded-3xl p-4 md:p-5 flex flex-col gap-4 shadow-sm relative pt-6">
+                    <span className="absolute -top-3 left-4 bg-indigo-500 text-white text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full">
+                      Câu hỏi {idx + 1}
+                    </span>
+
+                    {subQuestions.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveSubQuestion(idx)}
+                        className="absolute top-2.5 right-2.5 text-rose-500 hover:text-rose-750 p-1.5 rounded-full hover:bg-rose-50 dark:hover:bg-rose-955/20 transition-colors cursor-pointer"
+                        title="Xóa câu hỏi con này"
+                      >
+                        <Trash2 className="w-4.5 h-4.5" />
+                      </button>
+                    )}
+                    
+                    <div>
+                      <label className="block text-slate-700 dark:text-slate-305 font-extrabold text-xs mb-1.5">
+                        Lời Cô giáo AI sẽ nói với học sinh {idx === 0 && <span className="text-rose-555">*</span>}
+                      </label>
+                      <input
+                        type="text"
+                        required={idx === 0}
+                        value={q.examinerScript}
+                        onChange={(e) => {
+                          const updated = [...subQuestions];
+                          updated[idx].examinerScript = e.target.value;
+                          setSubQuestions(updated);
+                        }}
+                        placeholder={`Ví dụ câu hỏi ${idx + 1}: Where is the cat? / What is the boy doing?`}
+                        className="w-full rounded-xl border-2 border-slate-200 dark:border-slate-700 p-2.5 text-xs font-extrabold text-slate-700 dark:text-slate-200 outline-none transition-colors bg-white dark:bg-slate-900"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-slate-600 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-wide mb-1.5">
+                          Từ vựng học sinh cần nói
+                        </label>
+                        <input
+                          type="text"
+                          value={q.expectedKeywords}
+                          onChange={(e) => {
+                            const updated = [...subQuestions];
+                            updated[idx].expectedKeywords = e.target.value;
+                            setSubQuestions(updated);
+                          }}
+                          placeholder="Từ khóa cách nhau bằng dấu phẩy (,)"
+                          className="w-full rounded-xl border-2 border-slate-200 dark:border-slate-700 p-2.5 text-[11px] font-extrabold text-slate-700 dark:text-slate-200 outline-none transition-colors bg-white dark:bg-slate-900"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-slate-600 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-wide mb-1.5">
+                          Ngữ pháp học sinh cần dùng
+                        </label>
+                        <input
+                          type="text"
+                          value={q.targetGrammar}
+                          onChange={(e) => {
+                            const updated = [...subQuestions];
+                            updated[idx].targetGrammar = e.target.value;
+                            setSubQuestions(updated);
+                          }}
+                          placeholder="Mẫu ngữ pháp cách nhau bằng dấu phẩy (,)"
+                          className="w-full rounded-xl border-2 border-slate-200 dark:border-slate-700 p-2.5 text-[11px] font-extrabold text-slate-700 dark:text-slate-200 outline-none transition-colors bg-white dark:bg-slate-900"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4 border-t border-slate-100 dark:border-slate-800 pt-3 mt-1">
+                      <div>
+                        <label className="block text-slate-600 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-wide mb-1.5">
+                          Đổi chủ đề (Tuỳ chọn)
+                        </label>
+                        <input
+                          type="text"
+                          value={q.topic || ""}
+                          onChange={(e) => {
+                            const updated = [...subQuestions];
+                            updated[idx].topic = e.target.value;
+                            setSubQuestions(updated);
+                          }}
+                          placeholder="Mặc định dùng chung"
+                          className="w-full rounded-xl border-2 border-slate-200 dark:border-slate-700 p-2.5 text-[11px] font-extrabold text-slate-700 dark:text-slate-200 outline-none transition-colors bg-white dark:bg-slate-900"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-slate-600 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-wide mb-1.5">
+                          Đổi cấp độ (Tuỳ chọn)
+                        </label>
+                        <select
+                          value={q.level || ""}
+                          onChange={(e) => {
+                            const updated = [...subQuestions];
+                            updated[idx].level = e.target.value as any;
+                            setSubQuestions(updated);
+                          }}
+                          className="w-full rounded-xl border-2 border-slate-200 dark:border-slate-700 p-2.5 text-[11px] font-extrabold text-slate-700 dark:text-slate-200 outline-none transition-colors bg-white dark:bg-slate-900 cursor-pointer"
+                        >
+                          <option value="">Dùng chung</option>
+                          <option value="Starters">Starters 🦛</option>
+                          <option value="Movers">Movers 🐒</option>
+                          <option value="Flyers">Flyers 🦁</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-slate-600 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-wide mb-1.5">
+                          Đổi độ khó (Tuỳ chọn)
+                        </label>
+                        <select
+                          value={q.difficulty || ""}
+                          onChange={(e) => {
+                            const updated = [...subQuestions];
+                            updated[idx].difficulty = e.target.value as any;
+                            setSubQuestions(updated);
+                          }}
+                          className="w-full rounded-xl border-2 border-slate-200 dark:border-slate-700 p-2.5 text-[11px] font-extrabold text-slate-700 dark:text-slate-200 outline-none transition-colors bg-white dark:bg-slate-900 cursor-pointer"
+                        >
+                          <option value="">Dùng chung</option>
+                          <option value="Easy">Easy (Dễ)</option>
+                          <option value="Medium">Medium (Trung bình)</option>
+                          <option value="Hard">Hard (Khó)</option>
+                        </select>
+                      </div>
+                      <div className="md:col-span-2">
+                        <div className="flex justify-between items-center mb-1.5">
+                          <label className="block text-slate-600 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-wide">
+                            Nhóm kỹ năng đánh giá
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => setShowGroupManager(true)}
+                            className="text-[9px] font-black text-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center gap-0.5 transition-colors cursor-pointer"
+                          >
+                            ⚙️ Quản lý nhóm
+                          </button>
+                        </div>
+                        <select
+                          value={
+                            skillGroups.some(g => g.code === q.groupCode && g.name === q.groupName)
+                              ? `${q.groupCode}|${q.groupName}`
+                              : (q.groupCode || q.groupName ? "custom" : "")
+                          }
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            const updated = [...subQuestions];
+                            if (val === "custom") {
+                              if (!updated[idx].groupCode) updated[idx].groupCode = "custom";
+                              if (!updated[idx].groupName) updated[idx].groupName = "Custom Category";
+                            } else if (val === "") {
+                              updated[idx].groupCode = "";
+                              updated[idx].groupName = "";
+                            } else {
+                              const [code, name] = val.split("|");
+                              updated[idx].groupCode = code;
+                              updated[idx].groupName = name;
+                            }
+                            setSubQuestions(updated);
+                          }}
+                          className="w-full rounded-xl border-2 border-slate-200 dark:border-slate-700 p-2.5 text-[11px] font-extrabold text-slate-700 dark:text-slate-200 outline-none transition-colors bg-white dark:bg-slate-900 cursor-pointer"
+                        >
+                          <option value="">Không phân nhóm (Dùng chung)</option>
+                          {skillGroups.map((g) => (
+                            <option key={g.code} value={`${g.code}|${g.name}`}>
+                              {g.code} - {g.name} {g.description ? `(${g.description})` : ""}
+                            </option>
+                          ))}
+                          <option value="custom">Khác (Tự nhập...)</option>
+                        </select>
+                      </div>
+
+                      {((q.groupCode || q.groupName) && !skillGroups.some(g => g.code === q.groupCode && g.name === q.groupName)) && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-slate-50 dark:border-slate-800/50 pt-2 mt-2 col-span-1 md:col-span-5 animate-fadeIn">
+                          <div>
+                            <label className="block text-slate-600 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-wide mb-1.5">
+                              Mã nhóm tùy chỉnh
+                            </label>
+                            <input
+                              type="text"
+                              value={q.groupCode || ""}
+                              onChange={(e) => {
+                                const updated = [...subQuestions];
+                                updated[idx].groupCode = e.target.value;
+                                setSubQuestions(updated);
+                              }}
+                              placeholder="Ví dụ: 1.1"
+                              className="w-full rounded-xl border-2 border-slate-200 dark:border-slate-700 p-2.5 text-[11px] font-extrabold text-slate-700 dark:text-slate-200 outline-none transition-colors bg-white dark:bg-slate-900"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-slate-600 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-wide mb-1.5">
+                              Tên nhóm kỹ năng tùy chỉnh
+                            </label>
+                            <input
+                              type="text"
+                              value={q.groupName || ""}
+                              onChange={(e) => {
+                                const updated = [...subQuestions];
+                                updated[idx].groupName = e.target.value;
+                                setSubQuestions(updated);
+                              }}
+                              placeholder="Ví dụ: Vocabulary"
+                              className="w-full rounded-xl border-2 border-slate-200 dark:border-slate-700 p-2.5 text-[11px] font-extrabold text-slate-700 dark:text-slate-200 outline-none transition-colors bg-white dark:bg-slate-900"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={handleAddSubQuestion}
+                  className="btn-3d-indigo py-3 px-6 text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 self-start hover:scale-[1.02] cursor-pointer mt-1"
+                >
+                  <span>+ Thêm câu hỏi con</span>
+                </button>
+              </div>
+
+              {/* Mobile image selector (shows up here only on smaller screens) */}
+              <div className="lg:hidden">
+                <label className="block text-slate-700 font-extrabold text-xs uppercase tracking-wide mb-1.5">
+                  Tệp học liệu PDF hoặc ảnh minh họa <span className="text-rose-500">*</span>
+                </label>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={triggerFileInput}
+                    className="btn-3d-gray py-3 px-4 text-xs font-black shrink-0"
+                  >
+                    Chọn ảnh hoặc PDF 📄
+                  </button>
+                  {imageFile && (
+                    <div className="flex-1 flex items-center gap-2 truncate text-xs font-bold text-slate-600 bg-slate-50 border p-2 rounded-xl">
+                      <ImageIcon className="w-4 h-4 text-indigo-500 shrink-0" />
+                      <span className="truncate">{imageFile.name}</span>
+                      <button type="button" onClick={removeImage} className="text-rose-500 hover:text-rose-700 ml-auto shrink-0">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Action tactical 3D buttons */}
+              <div className="flex gap-3 border-t border-slate-100 pt-5 mt-2 sticky bottom-0 bg-white dark:bg-slate-900 z-20 pb-4 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.1)] lg:shadow-none">
+                <button
+                  type="button"
+                  onClick={resetForm}
+                  disabled={isSubmitting}
+                  className="btn-3d-gray px-6 py-4 text-sm font-black uppercase tracking-wider shrink-0 disabled:opacity-50"
+                >
+                  {isEditing ? "HỦY SỬA ❌" : "Xóa trắng 🗑️"}
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className={`flex-1 py-4 text-sm font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all ${
+                    isEditing ? "btn-3d-yellow text-slate-800" : "btn-3d-green"
+                  } ${
+                    isSubmitting ? "brightness-95 shadow-none translate-y-[4px]" : "hover:scale-[1.01]"
+                  }`}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      {isEditing ? "ĐANG CẬP NHẬT DỮ LIỆU..." : "ĐANG TẢI LÊN CLOUDINARY & LƯU DB..."}
+                    </>
+                  ) : isEditing ? (
+                    <>
+                      <PenTool className="w-5 h-5" />
+                      CẬP NHẬT HỌC LIỆU 💾
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-5 h-5" />
+                      LƯU VÀO KHO BÀI TẬP 🚀
+                    </>
+                  )}
+                </button>
+              </div>
+
+            </form>
+          </div>
+
+          
+          <div className="flex flex-col gap-6">
+{/* AI Sandbox Evaluation Test Card */}
             <div className="bg-white dark:bg-slate-900 rounded-3xl border-4 border-indigo-200 dark:border-indigo-900 p-4 md:p-6 shadow-xl relative overflow-hidden">
               <span className="absolute top-2 right-4 text-2xl animate-pulse">🧪</span>
               <h4 className="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-wider mb-4 flex items-center gap-1.5 border-b pb-2">
-                <span>AI Sandbox - Thử nghiệm nhanh</span>
+                <span>Góc Kiểm Thử (Đóng vai học sinh)</span>
               </h4>
               
               <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mb-4">
@@ -1626,34 +1649,12 @@ export default function CambridgeImportPage() {
               </div>
             </div>
 
-            {/* Quick PDF Extraction Instruction Guidelines */}
-            <div className="bg-white dark:bg-slate-900 rounded-3xl border-4 border-slate-100 dark:border-slate-700 p-4 md:p-6 shadow-xl">
-              <h4 className="text-sm font-black text-slate-800 uppercase tracking-wider mb-3.5 flex items-center gap-1.5">
-                <HelpCircle className="w-4.5 h-4.5 text-amber-500" />
-                Hướng dẫn cắt bóc tách từ PDF
-              </h4>
-              
-              <ul className="text-xs font-bold text-slate-500 flex flex-col gap-3 leading-relaxed">
-                <li className="flex items-start gap-2">
-                  <div className="w-5 h-5 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center text-[10px] font-black text-amber-800 shrink-0">1</div>
-                  <span>Sử dụng công cụ chụp màn hình (Snipping Tool / Lightshot) chụp sắc nét bức tranh mô tả cảnh hoặc Object Cards trong PDF đề thi Cambridge chuẩn.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <div className="w-5 h-5 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center text-[10px] font-black text-amber-800 shrink-0">2</div>
-                  <span>Đặt tên ID học liệu tương ứng cấu trúc để dễ truy xuất (Ví dụ: <code>ST_P1_03</code> là Starters Part 1 Câu 03).</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <div className="w-5 h-5 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center text-[10px] font-black text-amber-800 shrink-0">3</div>
-                  <span>Nhập kịch bản câu hỏi bản xứ và từ khóa dự kiến để giúp cô giáo AI có cơ sở tự động đánh giá phát âm cho học viên nhé!</span>
-                </li>
-              </ul>
-            </div>
-
+            
           </div>
 
         </section>
 
-        {/* Live Question Bank Data Table */}
+{/* Live Question Bank Data Table */}
         <section className="bg-white dark:bg-slate-900 rounded-3xl border-4 border-slate-100 dark:border-slate-700 p-4 md:p-6 md:p-8 shadow-xl mb-12">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4 border-b border-slate-100 pb-5 mb-6">
             <div>
@@ -1731,7 +1732,7 @@ export default function CambridgeImportPage() {
                     <th className="py-4 px-4 text-xs font-black uppercase w-24">Cấp độ</th>
                     <th className="py-4 px-4 text-xs font-black uppercase w-20 text-center">Độ khó</th>
                     <th className="py-4 px-4 text-xs font-black uppercase w-16 text-center">Part</th>
-                    <th className="py-4 px-4 text-xs font-black uppercase w-32">Loại bối cảnh</th>
+                    <th className="py-4 px-4 text-xs font-black uppercase w-32">Phân loại bối cảnh</th>
                     <th className="py-4 px-4 text-xs font-black uppercase w-28">Chủ đề</th>
                     <th className="py-4 px-4 text-xs font-black uppercase">Kịch bản Giám khảo AI</th>
                     <th className="py-4 px-4 text-xs font-black uppercase w-48">Tiêu chí chấm điểm</th>
@@ -1894,7 +1895,7 @@ export default function CambridgeImportPage() {
               {/* Modal Header */}
               <div className="p-5 border-b border-slate-100 dark:border-slate-805 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
                 <h3 className="text-sm font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-2">
-                  ⚙️ Quản lý Loại bối cảnh học liệu
+                  ⚙️ Quản lý Phân loại bối cảnh học liệu
                 </h3>
                 <button
                   type="button"
@@ -2038,7 +2039,7 @@ export default function CambridgeImportPage() {
               {/* Modal Header */}
               <div className="p-5 border-b border-slate-100 dark:border-slate-805 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
                 <h3 className="text-sm font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-2">
-                  ⚙️ Quản lý Nhóm kỹ năng
+                  ⚙️ Quản lý Nhóm kỹ năng đánh giá
                 </h3>
                 <button
                   type="button"

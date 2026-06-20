@@ -282,16 +282,16 @@ export default function AnalyticsDashboard() {
           <nav className="flex text-sm text-slate-500 font-medium mb-4">
             <Link href="/" className="hover:text-indigo-600 flex items-center gap-1"><Home className="w-4 h-4"/> Home</Link>
             <ChevronRight className="w-4 h-4 mx-2 opacity-50" />
-            <Link href="/dashboard" className="hover:text-indigo-600">Dashboard</Link>
+            <Link href="/dashboard" className="hover:text-indigo-600">Báo Cáo</Link>
             <ChevronRight className="w-4 h-4 mx-2 opacity-50" />
-            <span className="text-slate-800 dark:text-slate-200">Analytics</span>
+            <span className="text-slate-800 dark:text-slate-200">Thống Kê</span>
           </nav>
           
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
             <div>
               <h1 className="text-3xl font-black text-slate-800 dark:text-white flex items-center gap-3">
                 <PieChart className="w-8 h-8 text-indigo-500" />
-                EduZ Analytics Dashboard
+                Báo Cáo Điểm Số & Đánh Giá Năng Lực
               </h1>
               <p className="text-slate-500 font-medium mt-1">Phân tích chuyên sâu dữ liệu bài kiểm tra đầu vào và lộ trình phát triển.</p>
             </div>
@@ -300,7 +300,7 @@ export default function AnalyticsDashboard() {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
               </span>
-              <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Live Data Synchronized</span>
+              <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Dữ liệu cập nhật trực tiếp</span>
             </div>
           </div>
         </div>
@@ -323,7 +323,7 @@ export default function AnalyticsDashboard() {
 
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-100 dark:border-slate-800 shadow-sm flex items-center gap-4">
+          <div className="bg-white dark:bg-slate-900/80 rounded-2xl p-6 border border-slate-200/60 dark:border-slate-800/80 shadow-sm transition-all hover:shadow-md flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400">
               <Users className="w-6 h-6" />
             </div>
@@ -333,7 +333,7 @@ export default function AnalyticsDashboard() {
             </div>
           </div>
           
-          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-100 dark:border-slate-800 shadow-sm flex items-center gap-4">
+          <div className="bg-white dark:bg-slate-900/80 rounded-2xl p-6 border border-slate-200/60 dark:border-slate-800/80 shadow-sm transition-all hover:shadow-md flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
               <Target className="w-6 h-6" />
             </div>
@@ -343,7 +343,7 @@ export default function AnalyticsDashboard() {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-100 dark:border-slate-800 shadow-sm flex items-center gap-4">
+          <div className="bg-white dark:bg-slate-900/80 rounded-2xl p-6 border border-slate-200/60 dark:border-slate-800/80 shadow-sm transition-all hover:shadow-md flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-amber-600 dark:text-amber-400">
               <TrendingUp className="w-6 h-6" />
             </div>
@@ -353,7 +353,7 @@ export default function AnalyticsDashboard() {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-100 dark:border-slate-800 shadow-sm flex items-center gap-4">
+          <div className="bg-white dark:bg-slate-900/80 rounded-2xl p-6 border border-slate-200/60 dark:border-slate-800/80 shadow-sm transition-all hover:shadow-md flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center text-violet-600 dark:text-violet-400">
               <Award className="w-6 h-6" />
             </div>
@@ -365,7 +365,7 @@ export default function AnalyticsDashboard() {
         </div>
 
         {/* Global Statistics Section (Bar Chart) */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
+        <div className="bg-white dark:bg-slate-900/80 rounded-2xl border border-slate-200/60 dark:border-slate-800/80 shadow-sm transition-all hover:shadow-md overflow-hidden">
           <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <h2 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
@@ -392,7 +392,7 @@ export default function AnalyticsDashboard() {
           
           <div className="p-6 overflow-x-auto">
             {/* Using arbitrary cast since barData structure maps perfectly to BarChartData when fetched from API */}
-            <BarChartSVG data={barData as any} height={350} isLoading={isBarDataLoading} />
+            <BarChartSVG data={barData as any} height={360} isLoading={isBarDataLoading} />
           </div>
         </div>
 
@@ -400,9 +400,9 @@ export default function AnalyticsDashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
           {/* Left Column: Leaderboard / Student Selector */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col">
+          <div className="bg-white dark:bg-slate-900/80 rounded-2xl border border-slate-200/60 dark:border-slate-800/80 shadow-sm transition-all hover:shadow-md overflow-hidden flex flex-col">
             <div className="p-5 border-b border-slate-100 dark:border-slate-800">
-              <h2 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Bảng Xếp Hạng & Chọn Học sinh</h2>
+              <h2 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Danh sách Học sinh & Xếp hạng</h2>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input
@@ -420,7 +420,7 @@ export default function AnalyticsDashboard() {
                 <button
                   key={`${student.id}-${idx}`}
                   onClick={() => selectStudentForDetail(student)}
-                  className={`w-full text-left flex items-center gap-3 p-3 rounded-xl transition-all ${selectedStudent?.id === student.id ? "bg-indigo-50 dark:bg-indigo-900/20 border-indigo-100 dark:border-indigo-800" : "hover:bg-slate-50 dark:hover:bg-slate-800/50"} border border-transparent`}
+                  className={`w-full text-left flex items-center gap-3 p-3 rounded-xl transition-all ${selectedStudent?.id === student.id ? "bg-indigo-50 dark:bg-indigo-900/20 border-indigo-100 dark:border-indigo-800" : "hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:shadow-sm"} border border-transparent`}
                 >
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${idx === 0 ? "bg-amber-100 text-amber-600" : idx === 1 ? "bg-slate-200 text-slate-600" : idx === 2 ? "bg-orange-100 text-orange-600" : "bg-blue-50 text-blue-600"}`}>
                     #{idx + 1}
@@ -447,25 +447,25 @@ export default function AnalyticsDashboard() {
           <div className="lg:col-span-2 space-y-8">
             
             {/* Top Right: Line Chart */}
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-6">
+            <div className="bg-white dark:bg-slate-900/80 rounded-2xl border border-slate-200/60 dark:border-slate-800/80 shadow-sm transition-all hover:shadow-md p-6">
               <div className="mb-6">
                 <h2 className="text-xl font-bold text-slate-800 dark:text-white">
-                  Đường cong phát triển cá nhân: <span className="text-indigo-600">{selectedStudent?.name || "..."}</span>
+                  Theo dõi sự tiến bộ của từng học sinh: <span className="text-indigo-600">{selectedStudent?.name || "..."}</span>
                 </h2>
                 <p className="text-sm text-slate-500">Tiến độ điểm số 4 kỹ năng qua các bài kiểm tra gần đây.</p>
               </div>
               
-              <LineChartSVG data={studentTimeline as any} height={300} />
+              <LineChartSVG data={studentTimeline as any} height={320} />
             </div>
 
             {/* Grid for Radar Charts */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               
               {/* Radar Chart 1: Internal Progress */}
-              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-6 flex flex-col justify-between">
+              <div className="bg-white dark:bg-slate-900/80 rounded-2xl border border-slate-200/60 dark:border-slate-800/80 shadow-sm transition-all hover:shadow-md p-6 flex flex-col justify-between">
                 <div className="mb-6">
                   <h2 className="text-xl font-bold text-slate-800 dark:text-white">
-                    So sánh tiến bộ nội tại
+                    Tiến bộ so với kỳ trước
                   </h2>
                   <p className="text-sm text-slate-500">Giai đoạn đầu lộ trình vs. Giai đoạn hiện tại</p>
                 </div>
@@ -475,8 +475,8 @@ export default function AnalyticsDashboard() {
                     <OverlayRadarChart
                       baseData={radarBase}
                       currentData={radarCurrent}
-                      labels={["Speaking", "Listening", "Reading", "Writing"]}
-                      size={300}
+                      labels={["Nói", "Nghe", "Đọc", "Viết"]}
+                      size={320}
                       baseLabel="Kỳ đánh giá trước"
                       currentLabel="Kỳ gần nhất"
                     />
@@ -487,10 +487,10 @@ export default function AnalyticsDashboard() {
               </div>
 
               {/* Radar Chart 2: Comparison with Class Average */}
-              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-6 flex flex-col justify-between">
+              <div className="bg-white dark:bg-slate-900/80 rounded-2xl border border-slate-200/60 dark:border-slate-800/80 shadow-sm transition-all hover:shadow-md p-6 flex flex-col justify-between">
                 <div className="mb-6">
                   <h2 className="text-xl font-bold text-slate-800 dark:text-white">
-                    So sánh với trung bình lớp
+                    So sánh với mặt bằng chung của lớp
                   </h2>
                   <p className="text-sm text-slate-500">
                     Trung bình lớp {selectedStudent?.className || "..."} vs. Học viên hiện tại
@@ -502,9 +502,9 @@ export default function AnalyticsDashboard() {
                     <OverlayRadarChart
                       baseData={classAverageData}
                       currentData={radarCurrent}
-                      labels={["Speaking", "Listening", "Reading", "Writing"]}
-                      size={300}
-                      colors={{ base: "#3b82f6", current: "#8b5cf6" }}
+                      labels={["Nói", "Nghe", "Đọc", "Viết"]}
+                      size={320}
+                      colors={{ base: "#64748b", current: "#f43f5e" }}
                       baseLabel="Trung bình lớp"
                       currentLabel="Học viên"
                     />

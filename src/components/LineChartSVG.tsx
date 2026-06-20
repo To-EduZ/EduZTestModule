@@ -96,9 +96,27 @@ export default function LineChartSVG({ data, height = 400 }: LineChartSVGProps) 
   const width = Math.max(dataLength * 110 + padding.left + padding.right, minWidth);
   const innerWidth = width - padding.left - padding.right;
   const innerHeight = height - padding.top - padding.bottom;
+
   const maxVal = 100;
+  
+  // Dynamic scale calculation to amplify differences
+  const allValues = data ? data.flatMap(d => [d.speaking, d.listening, d.reading, d.writing]).filter(v => v !== undefined && v !== null && !isNaN(v)) : [];
+  const dataMin = allValues.length > 0 ? Math.min(...allValues) : 0;
+  let minScore = 0;
+  if (dataMin >= 75) minScore = 60;
+  else if (dataMin >= 55) minScore = 40;
+  else if (dataMin >= 35) minScore = 20;
+  const scoreRange = maxVal - minScore;
+
+  const yTicks = [
+    minScore,
+    minScore + scoreRange * 0.25,
+    minScore + scoreRange * 0.5,
+    minScore + scoreRange * 0.75,
+    maxVal
+  ];
+
   const xStep = innerWidth / Math.max(dataLength - 1, 1);
-  const yTicks = [0, 25, 50, 75, 100];
 
   // Pre-compute points per skill
   const skillPoints = useMemo(() => {
@@ -115,7 +133,7 @@ export default function LineChartSVG({ data, height = 400 }: LineChartSVGProps) 
       const x = i * xStep;
       SKILLS.forEach((skill) => {
         const val = mounted ? (item[skill] ?? 0) : 0;
-        map[skill].push({ x, y: innerHeight - (val / maxVal) * innerHeight });
+        map[skill].push({ x, y: innerHeight - ((Math.max(val, minScore) - minScore) / scoreRange) * innerHeight });
       });
     });
     return map;
@@ -154,7 +172,7 @@ export default function LineChartSVG({ data, height = 400 }: LineChartSVGProps) 
         <g transform={`translate(${padding.left}, ${padding.top})`}>
           {/* Grid lines + Y labels */}
           {yTicks.map((tick) => {
-            const y = innerHeight - (tick / maxVal) * innerHeight;
+            const y = innerHeight - ((tick - minScore) / scoreRange) * innerHeight;
             return (
               <g key={tick} transform={`translate(0, ${y})`}>
                 <line
@@ -170,7 +188,7 @@ export default function LineChartSVG({ data, height = 400 }: LineChartSVGProps) 
                   x={-12}
                   y={4}
                   textAnchor="end"
-                  fontSize="12"
+                  fontSize="14"
                   fontWeight="600"
                   fill="var(--chart-text)"
                 >
@@ -211,7 +229,7 @@ export default function LineChartSVG({ data, height = 400 }: LineChartSVGProps) 
               x={i * xStep}
               y={innerHeight + 24}
               textAnchor="middle"
-              fontSize="12"
+              fontSize="14"
               fontWeight="600"
               fill="var(--chart-text-strong)"
             >
@@ -227,7 +245,7 @@ export default function LineChartSVG({ data, height = 400 }: LineChartSVGProps) 
               <path
                 key={`area-${skill}`}
                 d={areaPath(pts, innerHeight)}
-                fill={`url(#area-grad-${skill})`}
+                fill="transparent"
                 style={{ opacity: isActive ? 1 : 0.05, transition: "opacity 0.3s" }}
               />
             );
@@ -243,12 +261,12 @@ export default function LineChartSVG({ data, height = 400 }: LineChartSVGProps) 
                 d={catmullRomPath(pts)}
                 fill="none"
                 stroke={COLORS[skill].line}
-                strokeWidth={activeLine === skill ? 3.5 : 2.5}
+                strokeWidth={activeLine === skill ? 5 : 3}
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 filter={activeLine === skill ? "url(#line-glow)" : undefined}
                 style={{
-                  opacity: isActive ? 1 : 0.12,
+                  opacity: isActive ? 1 : 0.25,
                   transition: "opacity 0.3s, stroke-width 0.2s",
                 }}
               />
@@ -265,12 +283,12 @@ export default function LineChartSVG({ data, height = 400 }: LineChartSVGProps) 
                   key={`pt-${skill}-${i}`}
                   cx={pt.x}
                   cy={pt.y}
-                  r={isHoverIdx && isActive ? 6 : 3.5}
+                  r={isHoverIdx && isActive ? 8 : 4.5}
                   fill={isHoverIdx ? COLORS[skill].dot : "white"}
                   stroke={COLORS[skill].line}
-                  strokeWidth={isHoverIdx ? 2.5 : 1.5}
+                  strokeWidth={isHoverIdx ? 3.5 : 2.5}
                   style={{
-                    opacity: isActive ? 1 : 0.12,
+                    opacity: isActive ? 1 : 0.25,
                     transition: "r 0.2s ease, opacity 0.3s",
                     cursor: "pointer",
                   }}
@@ -291,8 +309,8 @@ export default function LineChartSVG({ data, height = 400 }: LineChartSVGProps) 
           {hoveredIndex !== null && (() => {
             const item = data[hoveredIndex];
             const x = hoveredIndex * xStep;
-            const tooltipW = 110;
-            const tooltipH = 102;
+            const tooltipW = 130;
+            const tooltipH = 115;
             const tooltipX = Math.min(Math.max(x - tooltipW / 2, 0), innerWidth - tooltipW);
             const lowestY = Math.min(...SKILLS.map((s) => skillPoints[s][hoveredIndex]?.y ?? innerHeight));
             const tooltipY = Math.max(lowestY - tooltipH - 16, 2);
@@ -311,7 +329,7 @@ export default function LineChartSVG({ data, height = 400 }: LineChartSVGProps) 
                   x={tooltipX + tooltipW / 2}
                   y={tooltipY + 16}
                   textAnchor="middle"
-                  fontSize="11"
+                  fontSize="14"
                   fontWeight="700"
                   fill="var(--chart-tooltip-subtext)"
                 >
@@ -321,14 +339,14 @@ export default function LineChartSVG({ data, height = 400 }: LineChartSVGProps) 
                   <g key={skill}>
                     <circle
                       cx={tooltipX + 12}
-                      cy={tooltipY + 30 + si * 18}
+                      cy={tooltipY + 33 + si * 20}
                       r={4}
                       fill={COLORS[skill].line}
                     />
                     <text
                       x={tooltipX + 22}
-                      y={tooltipY + 35 + si * 18}
-                      fontSize="11"
+                      y={tooltipY + 38 + si * 20}
+                      fontSize="14"
                       fontWeight="600"
                       fill="var(--chart-tooltip-text)"
                     >
@@ -336,9 +354,9 @@ export default function LineChartSVG({ data, height = 400 }: LineChartSVGProps) 
                     </text>
                     <text
                       x={tooltipX + tooltipW - 8}
-                      y={tooltipY + 35 + si * 18}
+                      y={tooltipY + 38 + si * 20}
                       textAnchor="end"
-                      fontSize="11"
+                      fontSize="14"
                       fontWeight="800"
                       fill={COLORS[skill].line}
                     >
@@ -367,7 +385,7 @@ export default function LineChartSVG({ data, height = 400 }: LineChartSVGProps) 
               style={{ backgroundColor: COLORS[skill].line }}
             />
             <span
-              className="text-xs font-bold uppercase tracking-widest"
+              className="text-sm font-bold uppercase tracking-widest"
               style={{ color: "var(--chart-text-strong)" }}
             >
               {LABELS[skill]}

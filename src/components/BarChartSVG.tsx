@@ -147,7 +147,7 @@ export default function BarChartSVG({ data, height = 400, isLoading = false }: B
                   x={-12}
                   y={4}
                   textAnchor="end"
-                  fontSize="12"
+                  fontSize="14"
                   fontWeight="600"
                   fill="var(--chart-text)"
                 >
@@ -177,7 +177,7 @@ export default function BarChartSVG({ data, height = 400, isLoading = false }: B
                   x={i * groupWidth + groupWidth / 2}
                   y={innerHeight + 30}
                   textAnchor="middle"
-                  fontSize="13"
+                  fontSize="20"
                   fontWeight="700"
                   fill="var(--chart-text-strong)"
                 >
@@ -245,7 +245,7 @@ export default function BarChartSVG({ data, height = 400, isLoading = false }: B
                           x={x + barWidth / 2 - 2}
                           y={y - 8}
                           textAnchor="middle"
-                          fontSize="12"
+                          fontSize="14"
                           fontWeight="800"
                           fill={COLORS[skill].bar}
                         >
@@ -285,7 +285,7 @@ export default function BarChartSVG({ data, height = 400, isLoading = false }: B
                 x={clampedTx + tooltipW / 2}
                 y={tooltipY + 16}
                 textAnchor="middle"
-                fontSize="11"
+                fontSize="14"
                 fontWeight="700"
                 fill="var(--chart-tooltip-text)"
               >
@@ -295,7 +295,7 @@ export default function BarChartSVG({ data, height = 400, isLoading = false }: B
                 x={clampedTx + tooltipW / 2}
                 y={tooltipY + 32}
                 textAnchor="middle"
-                fontSize="16"
+                fontSize="20"
                 fontWeight="900"
                 fill={COLORS[hoveredBar.skill].gradient[0]}
               >
@@ -318,7 +318,7 @@ export default function BarChartSVG({ data, height = 400, isLoading = false }: B
               style={{ backgroundColor: COLORS[skill].bar }}
             />
             <span
-              className="text-xs font-bold uppercase tracking-widest"
+              className="text-sm font-bold uppercase tracking-widest"
               style={{ color: "var(--chart-text-strong)" }}
             >
               {LABELS[skill]}

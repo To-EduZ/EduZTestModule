@@ -24,16 +24,32 @@ export default function OverlayRadarChart({
   labels,
   maxScore = 100,
   size = 350,
-  colors = { base: "#94a3b8", current: "#8b5cf6" },
+  colors = { base: "#0ea5e9", current: "#f43f5e" },
   baseLabel = "Kỳ đánh giá trước",
   currentLabel = "Kỳ gần nhất",
 }: OverlayRadarChartProps) {
   const [hoveredAxis, setHoveredAxis] = useState<number | null>(null);
   const numAxes = labels.length;
+  // Dynamic scale calculation to amplify differences
+  const allValues = [...baseData, ...currentData].filter(v => v !== undefined && v !== null && !isNaN(v));
+  const dataMin = allValues.length > 0 ? Math.min(...allValues) : 0;
+  let minScore = 0;
+  if (dataMin >= 75) minScore = 60;
+  else if (dataMin >= 55) minScore = 40;
+  else if (dataMin >= 35) minScore = 20;
+  const scoreRange = maxScore - minScore;
+
+  const gridLevels = [
+    minScore + scoreRange * 0.25,
+    minScore + scoreRange * 0.5,
+    minScore + scoreRange * 0.75,
+    maxScore
+  ];
+
 
   // Fixed internal SVG coordinate space
   const internalSize = 420;
-  const radius = 115;
+  const radius = 100;
   const centerX = internalSize / 2;
   const centerY = internalSize / 2;
 
@@ -54,7 +70,8 @@ export default function OverlayRadarChart({
   const getCoordinates = useCallback(
     (value: number, index: number) => {
       const angle = (Math.PI * 2 * index) / numAxes - Math.PI / 2;
-      const distance = (value / maxScore) * radius;
+      const clampedValue = Math.max(value, minScore);
+      const distance = ((clampedValue - minScore) / scoreRange) * radius;
       return {
         x: centerX + Math.cos(angle) * distance,
         y: centerY + Math.sin(angle) * distance,
@@ -73,7 +90,7 @@ export default function OverlayRadarChart({
     [currentData, getCoordinates]
   );
 
-  const gridLevels = [20, 40, 60, 80, 100];
+  
 
   return (
     <div className="relative flex flex-col items-center justify-center w-full max-w-full">
@@ -123,9 +140,9 @@ export default function OverlayRadarChart({
                 {/* Score level label along the top axis */}
                 <text
                   x={centerX}
-                  y={centerY - (level / maxScore) * radius + 13}
+                  y={centerY - ((level - minScore) / scoreRange) * radius + 13}
                   textAnchor="middle"
-                  fontSize="10"
+                  fontSize="13"
                   fontWeight="700"
                   fill="var(--chart-radar-score-label)"
                   className="select-none font-mono"
@@ -157,7 +174,7 @@ export default function OverlayRadarChart({
           {/* Base polygon */}
           <polygon
             points={basePoints}
-            fill={`url(#${baseGradId})`}
+            fill="transparent"
             stroke={colors.base}
             strokeWidth="2"
             strokeDasharray="5 4"
@@ -182,7 +199,7 @@ export default function OverlayRadarChart({
           {/* Current polygon */}
           <polygon
             points={currentPoints}
-            fill={`url(#${currentGradId})`}
+            fill="transparent"
             stroke={colors.current}
             strokeWidth="3.5"
             strokeLinejoin="round"
@@ -241,7 +258,7 @@ export default function OverlayRadarChart({
               >
                 {/* Skill name */}
                 <tspan
-                  fontSize="12"
+                  fontSize="13"
                   fontWeight="900"
                   fill={isActive ? colors.current : "var(--chart-radar-label)"}
                   style={{ transition: "fill 0.2s" }}
@@ -250,18 +267,18 @@ export default function OverlayRadarChart({
                 </tspan>
 
                 {/* Score bracket */}
-                <tspan fontSize="11" fontWeight="600" fill="var(--chart-radar-score-label)" dx="3">
+                <tspan fontSize="13" fontWeight="600" fill="var(--chart-radar-score-label)" dx="3">
                   (
                 </tspan>
 
                 {/* Base score */}
                 {baseVal !== currVal && (
                   <>
-                    <tspan fontSize="11" fontWeight="700" fill={colors.base} className="font-mono">
+                    <tspan fontSize="13" fontWeight="700" fill={colors.base} className="font-mono">
                       {baseVal}
                     </tspan>
                     <tspan
-                      fontSize="11"
+                      fontSize="13"
                       fontWeight="700"
                       fill={improved ? "#10b981" : "#f59e0b"}
                       className="font-mono"
@@ -274,7 +291,7 @@ export default function OverlayRadarChart({
 
                 {/* Current score */}
                 <tspan
-                  fontSize="11"
+                  fontSize="13"
                   fontWeight="900"
                   fill={colors.current}
                   className="font-mono"
@@ -283,7 +300,7 @@ export default function OverlayRadarChart({
                   {currVal}
                 </tspan>
 
-                <tspan fontSize="11" fontWeight="600" fill="var(--chart-radar-score-label)">
+                <tspan fontSize="13" fontWeight="600" fill="var(--chart-radar-score-label)">
                   )
                 </tspan>
               </text>
@@ -298,13 +315,13 @@ export default function OverlayRadarChart({
           <div
             className="w-5 h-5 rounded border-2 border-dashed"
             style={{
-              backgroundColor: colors.base,
-              opacity: 0.45,
+              backgroundColor: "transparent",
+              opacity: 1,
               borderColor: colors.base,
             }}
           />
           <span
-            className="text-xs font-black uppercase tracking-wide"
+            className="text-sm font-black uppercase tracking-wide"
             style={{ color: "var(--chart-text)" }}
           >
             {baseLabel}
@@ -314,13 +331,13 @@ export default function OverlayRadarChart({
           <div
             className="w-5 h-5 rounded border-2"
             style={{
-              backgroundColor: colors.current,
-              opacity: 0.8,
+              backgroundColor: "transparent",
+              opacity: 1,
               borderColor: colors.current,
             }}
           />
           <span
-            className="text-xs font-black uppercase tracking-wide"
+            className="text-sm font-black uppercase tracking-wide"
             style={{ color: "var(--chart-text-strong)" }}
           >
             {currentLabel}
