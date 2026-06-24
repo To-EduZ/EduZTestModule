@@ -26,7 +26,10 @@ async function uploadToCloudinary(file: File, folder: string): Promise<string> {
 
 export async function GET(req: NextRequest) {
   try {
-    await connectToDatabase();
+    const { isFallback } = await connectToDatabase();
+    if (isFallback) {
+      return NextResponse.json({ success: true, data: fallbackMascots });
+    }
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
     

@@ -219,6 +219,9 @@ export default function InteractiveTest() {
   // Letter Tiles state (replaces keyboard input for spelling)
   const [availableLetters, setAvailableLetters] = useState<{letter: string, id: number}[]>([]);
   const [selectedLetters, setSelectedLetters] = useState<{letter: string, id: number}[]>([]);
+  const [draggedTile, setDraggedTile] = useState<{letter: string, id: number, source: "available" | "selected"} | null>(null);
+  const [isDragOverAnswer, setIsDragOverAnswer] = useState(false);
+  const [isDragOverAvailable, setIsDragOverAvailable] = useState(false);
   
   // Final aggregated scores out of 100
   const [scores, setScores] = useState({
@@ -722,6 +725,95 @@ export default function InteractiveTest() {
   const handleResetLetters = () => {
     setAvailableLetters(prev => [...prev, ...selectedLetters]);
     setSelectedLetters([]);
+  };
+
+  // Drag and Drop handlers
+  const handleDragStart = (
+    e: React.DragEvent,
+    tile: { letter: string; id: number },
+    source: "available" | "selected"
+  ) => {
+    if (writingSubmitted) return;
+    setDraggedTile({ ...tile, source });
+    e.dataTransfer.setData("text/plain", tile.id.toString());
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragEnd = () => {
+    setDraggedTile(null);
+    setIsDragOverAnswer(false);
+    setIsDragOverAvailable(false);
+  };
+
+  const handleDragOver = (e: React.DragEvent, target: "answer" | "available") => {
+    if (writingSubmitted) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  };
+
+  const handleDragEnter = (e: React.DragEvent, target: "answer" | "available") => {
+    if (writingSubmitted) return;
+    e.preventDefault();
+    if (target === "answer") {
+      setIsDragOverAnswer(true);
+    } else {
+      setIsDragOverAvailable(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent, target: "answer" | "available") => {
+    if (target === "answer") {
+      setIsDragOverAnswer(false);
+    } else {
+      setIsDragOverAvailable(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent, target: "answer" | "available") => {
+    if (writingSubmitted) return;
+    e.preventDefault();
+    if (!draggedTile) return;
+
+    if (draggedTile.source === "available" && target === "answer") {
+      setAvailableLetters(prev => prev.filter(t => t.id !== draggedTile.id));
+      setSelectedLetters(prev => [...prev, { letter: draggedTile.letter, id: draggedTile.id }]);
+    } else if (draggedTile.source === "selected" && target === "available") {
+      setSelectedLetters(prev => prev.filter(t => t.id !== draggedTile.id));
+      setAvailableLetters(prev => [...prev, { letter: draggedTile.letter, id: draggedTile.id }]);
+    }
+
+    setDraggedTile(null);
+    setIsDragOverAnswer(false);
+    setIsDragOverAvailable(false);
+  };
+
+  const handleDropOnTile = (e: React.DragEvent, targetIdx: number) => {
+    if (writingSubmitted || !draggedTile) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (draggedTile.source === "selected") {
+      setSelectedLetters(prev => {
+        const list = [...prev];
+        const draggedIdx = list.findIndex(t => t.id === draggedTile.id);
+        if (draggedIdx !== -1) {
+          const [removed] = list.splice(draggedIdx, 1);
+          list.splice(targetIdx, 0, removed);
+        }
+        return list;
+      });
+    } else if (draggedTile.source === "available") {
+      setAvailableLetters(prev => prev.filter(t => t.id !== draggedTile.id));
+      setSelectedLetters(prev => {
+        const list = [...prev];
+        list.splice(targetIdx, 0, { letter: draggedTile.letter, id: draggedTile.id });
+        return list;
+      });
+    }
+
+    setDraggedTile(null);
+    setIsDragOverAnswer(false);
+    setIsDragOverAvailable(false);
   };
 
   // Stage 4 Writing submission & scoring calculation (using letter tiles)
@@ -1468,17 +1560,32 @@ export default function InteractiveTest() {
                    </p>
 
                    {/* Answer zone — where selected letters appear */}
-                   <div className={`answer-zone w-full mb-4 ${selectedLetters.length > 0 ? "has-letters" : ""}`}>
+                   <div 
+                     onDragOver={(e) => handleDragOver(e, "answer")}
+                     onDragEnter={(e) => handleDragEnter(e, "answer")}
+                     onDragLeave={(e) => handleDragLeave(e, "answer")}
+                     onDrop={(e) => handleDrop(e, "answer")}
+                     className={`answer-zone w-full mb-4 transition-all duration-200 ${
+                       selectedLetters.length > 0 ? "has-letters" : ""
+                     } ${isDragOverAnswer ? "border-indigo-500 dark:border-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/40 ring-4 ring-indigo-200/50 scale-[1.02]" : ""}`}
+                   >
                      {selectedLetters.length === 0 ? (
                        <span className="text-xs font-bold text-slate-400 italic">
-                         Bấm vào các chữ cái bên dưới để ghép từ... ✨
+                         Kéo thả chữ cái vào đây hoặc bấm để chọn... ✨
                        </span>
                      ) : (
-                       selectedLetters.map((tile) => (
+                       selectedLetters.map((tile, idx) => (
                          <button
                            key={`ans-${tile.id}`}
                            onClick={() => !writingSubmitted && handleAnswerLetterTap(tile)}
-                           className="letter-tile in-answer"
+                           draggable={!writingSubmitted}
+                           onDragStart={(e) => handleDragStart(e, tile, "selected")}
+                           onDragEnd={handleDragEnd}
+                           onDragOver={(e) => handleDragOver(e, "answer")}
+                           onDrop={(e) => handleDropOnTile(e, idx)}
+                           className={`letter-tile in-answer transition-all duration-100 ${
+                             draggedTile?.id === tile.id ? "opacity-40 scale-95 border-dashed" : ""
+                           }`}
                            type="button"
                            disabled={writingSubmitted}
                          >
@@ -1489,12 +1596,27 @@ export default function InteractiveTest() {
                    </div>
 
                    {/* Available letter tiles */}
-                   <div className="flex flex-wrap gap-2.5 justify-center mb-4">
+                    <div 
+                      onDragOver={(e) => handleDragOver(e, "available")}
+                      onDragEnter={(e) => handleDragEnter(e, "available")}
+                      onDragLeave={(e) => handleDragLeave(e, "available")}
+                      onDrop={(e) => handleDrop(e, "available")}
+                      className={`flex flex-wrap gap-2.5 justify-center mb-4 p-3 rounded-2xl border-2 border-dashed transition-all duration-200 w-full ${
+                        isDragOverAvailable 
+                          ? "border-amber-400 dark:border-amber-500 bg-amber-50/40 dark:bg-slate-800/40 scale-[1.02] ring-4 ring-amber-100/30" 
+                          : "border-transparent"
+                      }`}
+                    >
                      {availableLetters.map((tile) => (
                        <button
                          key={`avail-${tile.id}`}
                          onClick={() => handleLetterTileTap(tile)}
-                         className="letter-tile"
+                         draggable={!writingSubmitted}
+                         onDragStart={(e) => handleDragStart(e, tile, "available")}
+                         onDragEnd={handleDragEnd}
+                         className={`letter-tile transition-all duration-100 ${
+                           draggedTile?.id === tile.id ? "opacity-40 scale-95 border-dashed" : ""
+                         }`}
                          type="button"
                          disabled={writingSubmitted}
                        >
@@ -1643,7 +1765,7 @@ export default function InteractiveTest() {
               ) : (
                 <p className="text-xs md:text-sm font-black text-slate-550 dark:text-slate-400 w-full text-center">
                   {stage === "writing" 
-                    ? "Bấm chữ cái để ghép từ ở trên nhé! ✍️" 
+                    ? "Kéo thả hoặc bấm chữ cái để ghép từ ở trên nhé! ✍️" 
                     : showMcq 
                     ? "Chọn đáp án trắc nghiệm ở trên nhé! 🧩" 
                     : isRecording 
@@ -1680,7 +1802,7 @@ export default function InteractiveTest() {
             {/* Hint message for children */}
             <p className="text-center text-[10px] text-slate-450 dark:text-slate-500 font-extrabold select-none">
               {stage === "writing" 
-                ? "Con hãy nhập chữ vào ô bên trái nhé!" 
+                ? "Con hãy kéo thả các chữ cái hoặc bấm để ghép từ nhé! ✍️" 
                 : showMcq 
                 ? "Con hãy chọn câu trả lời ở bên trái nhé!" 
                 : isRecording 
