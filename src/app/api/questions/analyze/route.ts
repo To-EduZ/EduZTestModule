@@ -195,7 +195,8 @@ Teacher's custom pedagogy wishes / special context guidelines:
 Analyze the image carefully and keep the teacher's custom wishes in mind:
 1. Determine the appropriate level ('Starters', 'Movers', or 'Flyers') based on the complexity of vocabulary and objects.
 2. Determine which part of the speaking exam it matches (Part 1, Part 2, Part 3, etc.).
-3. Choose a context type: 'Scene_Description' (if it's a main scene with many activities), 'Object_Card' (if it's a single item like a banana or frog), 'Storytelling' (if it's a comic panel/sequence of scenes), or 'Find_Differences' (if it has two similar pictures).
+3. Choose a context type: 'Scene_Description' (if it's a main scene with many activities), 'Object_Card' (if it's a single item like a banana or frog), 'Storytelling' (if it's a comic panel/sequence of scenes), or 'Find_Differences' (if the image has two side-by-side or similar sub-pictures with differences).
+   - If the type is 'Find_Differences', the sub-questions MUST specifically guide the student to compare and point out the differences between picture A (on the left/first) and picture B (on the right/second) (e.g., "In picture A, the weather is sunny, but in picture B, what is the weather like?").
 4. Generate a unique, short Question ID prefix based on level and part (e.g. 'ST_P1_12' for Starters Part 1, 'MV_P3_08' for Movers Part 3, 'FL_P2_05' for Flyers Part 2). Make the serial number randomly between 10 and 99 to avoid standard duplicates.
 5. Identify the main general topic (e.g. "Family", "Animals", "School life", "Classroom", "Nature", "Home", "Playground", "Food", "Hobbies", "Transport").
 6. Determine the overall difficulty level of this question block ('Easy', 'Medium', or 'Hard').
@@ -203,7 +204,7 @@ Analyze the image carefully and keep the teacher's custom wishes in mind:
 8. Generate a dynamic list of interactive sub-questions (questions array) for this image/context:
    - Determine how many questions are appropriate based on the image detail and the teacher's wishes (usually between 3 and 8 questions). If the teacher specified a desired number of questions, obey it!
    - For each sub-question:
-     - Provide a professional, friendly, child-appropriate 'examinerScript' (what the AI examiner will ask the student in English). Keep sentences simple.
+     - Provide a professional, friendly, child-appropriate 'examinerScript' (what the AI examiner will ask the student in English). Keep sentences simple. For 'Find_Differences', make sure questions ask the student to describe or compare differences (e.g., "In picture A, the dog is under the table, but where is it in picture B?").
      - Determine 'expectedKeywords' (the critical English vocabulary the child is expected to say in response).
      - Determine 'targetGrammar' structures (e.g., ["present continuous", "prepositions", "there is", "there are"]).
      - Add 'topic' (use the main topic or specific sub-topic).

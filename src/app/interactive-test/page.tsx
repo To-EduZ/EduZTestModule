@@ -195,7 +195,7 @@ export default function InteractiveTest() {
   const [picQuestions, setPicQuestions] = useState<any[]>([]);
   const [pictureIndex, setPictureIndex] = useState(0);
   const [subQuestionIndex, setSubQuestionIndex] = useState(0);
-  const [lastAskedPicIndex, setLastAskedPicIndex] = useState<number | null>(null);
+  const lastAskedPicIndexRef = useRef<number | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState<any>(null);
   const [keywordsHitPic1, setKeywordsHitPic1] = useState(0);
   const [totalProbingTurns, setTotalProbingTurns] = useState(0);
@@ -234,6 +234,9 @@ export default function InteractiveTest() {
   // MongoDB sync states
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState<boolean | null>(null);
+  
+  // Transition stage management to prevent microphone auto-activation race condition
+  const [isTransitioningStage, setIsTransitioningStage] = useState(false);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -329,6 +332,10 @@ export default function InteractiveTest() {
       const handleEnded = () => {
         setIsTtsSpeaking(false);
         console.log("🔊 TTS Audio finished playing.");
+        if (isTransitioningStage) {
+          console.log("⏭️ Skipping mic activation during stage/picture transition.");
+          return;
+        }
         if (
           isRealtimeMode && 
           autoActivateMic && 
@@ -352,7 +359,7 @@ export default function InteractiveTest() {
         audioEl.removeEventListener("ended", handleEnded);
       };
     }
-  }, [stage, isRealtimeMode, autoActivateMic, isProcessing, isRecording, showMcq]);
+  }, [stage, isRealtimeMode, autoActivateMic, isProcessing, isRecording, showMcq, isTransitioningStage]);
 
   const addAiMessage = (content: string) => {
     const newMessage: Message = { id: Date.now().toString(), role: "ai", content, stage };
@@ -381,7 +388,7 @@ export default function InteractiveTest() {
       setStage("warmup");
       setPictureIndex(0);
       setSubQuestionIndex(0);
-      setLastAskedPicIndex(null);
+      lastAskedPicIndexRef.current = null;
       // Add slight delay to make transitions natural
       setTimeout(() => {
         addAiMessage("Hello! Welcome to the English test. What's your name?");
@@ -392,19 +399,34 @@ export default function InteractiveTest() {
   // Automatically ask the first sub-question when starting picture stage or switching pictures
   useEffect(() => {
     if (stage === "picture" && currentQuestion) {
-      if (lastAskedPicIndex !== pictureIndex) {
-        setLastAskedPicIndex(pictureIndex);
+      if (lastAskedPicIndexRef.current !== pictureIndex) {
+        lastAskedPicIndexRef.current = pictureIndex;
         setSubQuestionIndex(0);
         
         const firstQuestionText = currentQuestion.questions?.[0]?.examinerScript || currentQuestion.examinerScript || "Look at the picture. What can you see?";
         
         const timer = setTimeout(() => {
+          setIsTransitioningStage(false);
           addAiMessage(firstQuestionText);
         }, 1200);
         return () => clearTimeout(timer);
       }
     }
-  }, [stage, pictureIndex, currentQuestion, lastAskedPicIndex]);
+  }, [stage, pictureIndex, currentQuestion]);
+
+  // Reset transition flag and auto-activate mic when entering reading stage
+  useEffect(() => {
+    if (stage === "reading") {
+      setIsTransitioningStage(false);
+      if (isRealtimeMode && autoActivateMic && !isProcessing && !isRecording) {
+        const timer = setTimeout(() => {
+          console.log("⚡ Auto-activating mic for Stage 3 Reading!");
+          startRecording();
+        }, 1000);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [stage, isRealtimeMode, autoActivateMic]);
 
   async function startRecording() {
     try {
@@ -646,10 +668,12 @@ export default function InteractiveTest() {
 
         if (data.stageComplete) {
           if (stage === "warmup") {
+            setIsTransitioningStage(true);
             setTimeout(() => setStage("picture"), 2500);
           } else if (stage === "picture") {
             // Handle sequential 2-picture logic
             if (pictureIndex === 0) {
+              setIsTransitioningStage(true);
               setTimeout(() => {
                 setKeywordsHitPic1(keywordsMentioned.length);
                 setTotalProbingTurns(prev => prev + probingTurnsCount);
@@ -668,6 +692,7 @@ export default function InteractiveTest() {
                 setIsProcessing(false);
               }, 2500);
             } else {
+              setIsTransitioningStage(true);
               setTimeout(() => {
                 setTotalProbingTurns(prev => prev + probingTurnsCount);
                 setStage("reading");
@@ -1320,7 +1345,7 @@ export default function InteractiveTest() {
                 setSaveSuccess(null);
                 setPictureIndex(0);
                 setSubQuestionIndex(0);
-                setLastAskedPicIndex(null);
+                lastAskedPicIndexRef.current = null;
                 setKeywordsHitPic1(0);
                 setTotalProbingTurns(0);
                 setWritingTaskIndex(0);

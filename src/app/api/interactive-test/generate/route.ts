@@ -86,12 +86,33 @@ export async function GET(req: NextRequest) {
       picQuestions = fallbackQuestions;
     }
 
-    // 2. Select up to 2 random pictures from the designated test paper
-    const shuffled = [...picQuestions].sort(() => 0.5 - Math.random());
-    const selectedPictures = shuffled.slice(0, 2);
-    if (selectedPictures.length < 2 && picQuestions.length > 0) {
-      selectedPictures.push(picQuestions[0]);
+    // 2. Select 1 Description picture and 1 Find Differences picture if available
+    let selectedPictures: any[] = [];
+    
+    const descQuestions = picQuestions.filter(q => q.type !== "Find_Differences");
+    const diffQuestions = picQuestions.filter(q => q.type === "Find_Differences");
+    
+    // Pick first picture (Description/normal)
+    if (descQuestions.length > 0) {
+      const randomIndex = Math.floor(Math.random() * descQuestions.length);
+      selectedPictures.push(descQuestions[randomIndex]);
     }
+    
+    // Pick second picture (Find Differences)
+    if (diffQuestions.length > 0) {
+      const randomIndex = Math.floor(Math.random() * diffQuestions.length);
+      selectedPictures.push(diffQuestions[randomIndex]);
+    }
+    
+    // If we still need pictures to make it exactly 2, fill from remaining general pool
+    if (selectedPictures.length < 2) {
+      const remainingPool = picQuestions.filter(q => !selectedPictures.some(p => p.id === q.id));
+      const shuffled = [...remainingPool].sort(() => 0.5 - Math.random());
+      while (selectedPictures.length < 2 && shuffled.length > 0) {
+        selectedPictures.push(shuffled.pop());
+      }
+    }
+
 
     // 3. Extract keywords
     const keywords1 = selectedPictures[0].evaluationCriteria?.expectedKeywords || ["animal"];
