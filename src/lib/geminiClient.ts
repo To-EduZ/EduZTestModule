@@ -12,14 +12,23 @@ import OpenAI from "openai";
 
 // ─── OpenAI-compatible Gemini client factory for OpenRouter ──────────────────
 
+function isOpenRouterKey(apiKey: string): boolean {
+  return apiKey.startsWith("sk-or-");
+}
+
 function createGeminiClient(apiKey: string): OpenAI {
+  const isOR = isOpenRouterKey(apiKey);
   return new OpenAI({
     apiKey,
-    baseURL: "https://openrouter.ai/api/v1",
-    defaultHeaders: {
-      "HTTP-Referer": "https://eduz.vn", // Optional OpenRouter header
-      "X-Title": "EduZ YLE Test Module", // Optional OpenRouter header
-    },
+    baseURL: isOR
+      ? "https://openrouter.ai/api/v1"
+      : "https://generativelanguage.googleapis.com/v1beta/openai",
+    ...(isOR ? {
+      defaultHeaders: {
+        "HTTP-Referer": "https://eduz.vn", // Optional OpenRouter header
+        "X-Title": "EduZ YLE Test Module", // Optional OpenRouter header
+      }
+    } : {}),
   });
 }
 
@@ -64,7 +73,10 @@ export async function callGemini(
   } = options;
 
   const primaryKey = process.env.OPENROUTER_API_KEY || process.env.GEMINI_API_KEY;
-  const backupKey = process.env.GEMINI_API_KEY_BACKUP;
+  let backupKey = process.env.GEMINI_API_KEY_BACKUP;
+  if (!backupKey && process.env.OPENROUTER_API_KEY && process.env.GEMINI_API_KEY) {
+    backupKey = process.env.GEMINI_API_KEY;
+  }
 
   if (!primaryKey) {
     throw new Error(
@@ -75,7 +87,7 @@ export async function callGemini(
   const makeRequest = async (apiKey: string): Promise<string> => {
     const client = createGeminiClient(apiKey);
     const completion = await client.chat.completions.create({
-      model: "google/gemini-2.5-flash",
+      model: isOpenRouterKey(apiKey) ? "google/gemini-2.5-flash" : "gemini-2.5-flash",
       messages,
       max_tokens: maxTokens,
       temperature,
@@ -83,8 +95,19 @@ export async function callGemini(
         ? { response_format: { type: "json_object" as const } }
         : {}),
     });
-    const content = completion.choices[0]?.message?.content ?? "";
-    if (!content) throw new Error("OpenRouter Gemini returned empty response.");
+    const choice = completion.choices[0];
+    if (!choice) throw new Error("OpenRouter Gemini returned empty response.");
+
+    if (choice.finish_reason === "error" || (choice as any).error) {
+      const errMsg = (choice as any).error?.message || "OpenRouter generation error";
+      const errCode = (choice as any).error?.code || 500;
+      const error = new Error(`OpenRouter Error ${errCode}: ${errMsg}`);
+      (error as any).status = errCode;
+      throw error;
+    }
+
+    const content = choice.message?.content ?? "";
+    if (!content) throw new Error("OpenRouter Gemini returned empty content.");
     return content;
   };
 
@@ -130,7 +153,10 @@ export async function callGeminiVision(
   mimeType: string
 ): Promise<string> {
   const primaryKey = process.env.OPENROUTER_API_KEY || process.env.GEMINI_API_KEY;
-  const backupKey = process.env.GEMINI_API_KEY_BACKUP;
+  let backupKey = process.env.GEMINI_API_KEY_BACKUP;
+  if (!backupKey && process.env.OPENROUTER_API_KEY && process.env.GEMINI_API_KEY) {
+    backupKey = process.env.GEMINI_API_KEY;
+  }
 
   if (!primaryKey) {
     throw new Error("Neither OPENROUTER_API_KEY nor GEMINI_API_KEY is configured.");
@@ -139,7 +165,7 @@ export async function callGeminiVision(
   const makeVisionRequest = async (apiKey: string): Promise<string> => {
     const client = createGeminiClient(apiKey);
     const completion = await client.chat.completions.create({
-      model: "google/gemini-2.5-flash",
+      model: isOpenRouterKey(apiKey) ? "google/gemini-2.5-flash" : "gemini-2.5-flash",
       messages: [
         {
           role: "user",
@@ -157,8 +183,19 @@ export async function callGeminiVision(
       response_format: { type: "json_object" as const },
     });
 
-    const content = completion.choices[0]?.message?.content ?? "";
-    if (!content) throw new Error("OpenRouter Gemini Vision returned empty response.");
+    const choice = completion.choices[0];
+    if (!choice) throw new Error("OpenRouter Gemini Vision returned empty response.");
+
+    if (choice.finish_reason === "error" || (choice as any).error) {
+      const errMsg = (choice as any).error?.message || "OpenRouter Vision generation error";
+      const errCode = (choice as any).error?.code || 500;
+      const error = new Error(`OpenRouter Error ${errCode}: ${errMsg}`);
+      (error as any).status = errCode;
+      throw error;
+    }
+
+    const content = choice.message?.content ?? "";
+    if (!content) throw new Error("OpenRouter Gemini Vision returned empty content.");
     return content;
   };
 

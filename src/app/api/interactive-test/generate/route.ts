@@ -7,20 +7,19 @@ import { callGemini, safeJsonParse } from "@/lib/geminiClient";
 
 const fallbackQuestions = [
   {
-    id: "ST_P1_01",
+    id: "MV_P1_57",
     level: "Movers",
-    imagePath: "https://res.cloudinary.com/demo/image/upload/v1312461204/sample.jpg",
+    imagePath: "https://res.cloudinary.com/dupquwf3j/image/upload/v1782384803/hubxanh_yle_pdf_digitalizer/MV_P1_57_1782384801316.jpg",
     evaluationCriteria: {
-      expectedKeywords: ["cat", "sleeping", "mat"],
+      expectedKeywords: ["weather", "raining", "rainy", "clouds", "sunny", "sun", "blue sky"],
     },
   },
   {
-    id: "MV_P2_01",
+    id: "MV_P1_87",
     level: "Movers",
-    imagePath:
-      "https://res.cloudinary.com/demo/image/upload/w_200,h_200,c_fill/v1312461204/sample.jpg",
+    imagePath: "https://res.cloudinary.com/dupquwf3j/image/upload/v1782385222/hubxanh_yle_pdf_digitalizer/MV_P1_87_1782385217272.jpg",
     evaluationCriteria: {
-      expectedKeywords: ["monkey", "climbing", "tree"],
+      expectedKeywords: ["cat", "dog", "sleeping", "sofa"],
     },
   },
   {
@@ -35,6 +34,7 @@ const fallbackQuestions = [
 ];
 
 export async function GET(req: NextRequest) {
+  let selectedPictures: any[] = [];
   try {
     let picQuestions: any[] = [];
 
@@ -87,8 +87,6 @@ export async function GET(req: NextRequest) {
     }
 
     // 2. Select 1 Description picture and 1 Find Differences picture if available
-    let selectedPictures: any[] = [];
-    
     const descQuestions = picQuestions.filter(q => q.type !== "Find_Differences");
     const diffQuestions = picQuestions.filter(q => q.type === "Find_Differences");
     
@@ -113,10 +111,9 @@ export async function GET(req: NextRequest) {
       }
     }
 
-
     // 3. Extract keywords
-    const keywords1 = selectedPictures[0].evaluationCriteria?.expectedKeywords || ["animal"];
-    const keywords2 = selectedPictures[1].evaluationCriteria?.expectedKeywords || ["nature"];
+    const keywords1 = selectedPictures[0]?.evaluationCriteria?.expectedKeywords || ["animal"];
+    const keywords2 = selectedPictures[1]?.evaluationCriteria?.expectedKeywords || ["nature"];
     const themeWords = Array.from(new Set([...keywords1, ...keywords2]));
 
     console.log(
@@ -124,11 +121,13 @@ export async function GET(req: NextRequest) {
     );
 
     // 4. Generate with Gemini
-    const content = await callGemini(
-      [
-        {
-          role: "system",
-          content: `Bạn là chuyên gia thiết kế đề thi tiếng Anh trẻ em (Cambridge YLE examiner) cực kỳ chuyên nghiệp và sáng tạo.
+    let parsed: any;
+    try {
+      const content = await callGemini(
+        [
+          {
+            role: "system",
+            content: `Bạn là chuyên gia thiết kế đề thi tiếng Anh trẻ em (Cambridge YLE examiner) cực kỳ chuyên nghiệp và sáng tạo.
 Thiết kế một bộ đề thi động hoàn toàn bằng Tiếng Anh, phù hợp với trình độ Movers (A1), liên kết chủ đề hai bức tranh có các từ khóa: [${themeWords.join(", ")}].
 
 Yêu cầu từng thành phần:
@@ -155,20 +154,41 @@ Lưu ý quan trọng về JSON:
     {"prompt": "Câu đố gợi ý từ thứ hai (không chứa từ đó)...", "correctWord": "từ thứ hai"}
   ]
 }`,
-        },
-        {
-          role: "user",
-          content: `Từ khóa chủ đề hai bức tranh: [${themeWords.join(", ")}]. Hãy sinh bộ đề thi độc quyền chuẩn YLE ngay lập tức!`,
-        },
-      ],
-      { maxTokens: 1024, responseFormat: "json_object", temperature: 0.8 }
-    );
+          },
+          {
+            role: "user",
+            content: `Từ khóa chủ đề hai bức tranh: [${themeWords.join(", ")}]. Hãy sinh bộ đề thi độc quyền chuẩn YLE ngay lập tức!`,
+          },
+        ],
+        { maxTokens: 1024, responseFormat: "json_object", temperature: 0.8 }
+      );
 
-    const parsed = safeJsonParse<{
-      story: string;
-      mcq: { question: string; options: string[]; correctIndex: number };
-      spelling: { prompt: string; correctWord: string }[];
-    }>(content);
+      parsed = safeJsonParse(content);
+    } catch (geminiErr: any) {
+      console.warn("⚠️ Lỗi gọi Gemini hoặc parse JSON đề thi. Sử dụng bộ đề thi tĩnh dự phòng.", geminiErr);
+      
+      const backupStory =
+        "Max is a happy little monkey who lives in a very tall coconut tree in the jungle. He loves to eat sweet yellow bananas every morning. Today, Max looks down and sees a small green frog sitting on a leaf in the pond. The frog is jumping up and down and singing a funny song. Max waves hello and laughs happily!";
+
+      parsed = {
+        story: backupStory,
+        mcq: {
+          question: "What does Max love to eat every morning?",
+          options: ["Red apples 🍎", "Sweet yellow bananas 🍌", "Green leaves 🍃"],
+          correctIndex: 1,
+        },
+        spelling: [
+          {
+            prompt: "Can you spell the word for the animal that lives in the tree? It starts with 'm'.",
+            correctWord: "monkey",
+          },
+          {
+            prompt: "Excellent! Now, can you spell the word for the yellow fruit that Max loves to eat? It starts with 'b'.",
+            correctWord: "banana",
+          },
+        ]
+      };
+    }
 
     return NextResponse.json({
       success: true,
@@ -178,9 +198,9 @@ Lưu ý quan trọng về JSON:
       spelling: parsed.spelling,
     });
   } catch (error: any) {
-    console.error("❌ Lỗi API generate interactive-test:", error);
+    console.error("❌ Lỗi API generate interactive-test hoàn toàn:", error);
 
-    // Static backup response if Gemini API is unavailable
+    // Ultimate fallback if even database logic failed
     const backupStory =
       "Max is a happy little monkey who lives in a very tall coconut tree in the jungle. He loves to eat sweet yellow bananas every morning. Today, Max looks down and sees a small green frog sitting on a leaf in the pond. The frog is jumping up and down and singing a funny song. Max waves hello and laughs happily!";
 
