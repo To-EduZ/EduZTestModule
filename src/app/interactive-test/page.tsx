@@ -195,6 +195,13 @@ export default function InteractiveTest() {
   const [picQuestions, setPicQuestions] = useState<any[]>([]);
   const [pictureIndex, setPictureIndex] = useState(0);
   const [subQuestionIndex, setSubQuestionIndex] = useState(0);
+  const [attemptsCount, setAttemptsCount] = useState(0);
+  
+  // Reset attempts when sub-question or picture index changes
+  useEffect(() => {
+    setAttemptsCount(0);
+  }, [subQuestionIndex, pictureIndex]);
+
   const lastAskedPicIndexRef = useRef<number | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState<any>(null);
   const [keywordsHitPic1, setKeywordsHitPic1] = useState(0);
@@ -373,8 +380,13 @@ export default function InteractiveTest() {
       const res = await fetch("/api/interactive-test/generate");
       const data = await res.json();
       if (data.success) {
-        setPicQuestions(data.pictures);
-        setCurrentQuestion(data.pictures[0]);
+        // Shorten the test by slicing to max 2 questions per picture
+        const shortenedPictures = data.pictures.map((pic: any) => ({
+          ...pic,
+          questions: pic.questions && pic.questions.length > 0 ? pic.questions.slice(0, 2) : []
+        }));
+        setPicQuestions(shortenedPictures);
+        setCurrentQuestion(shortenedPictures[0]);
         setDynamicStory(data.story);
         setDynamicMcq(data.mcq);
         setDynamicSpelling(data.spelling);
@@ -388,6 +400,7 @@ export default function InteractiveTest() {
       setStage("warmup");
       setPictureIndex(0);
       setSubQuestionIndex(0);
+      setAttemptsCount(0);
       lastAskedPicIndexRef.current = null;
       // Add slight delay to make transitions natural
       setTimeout(() => {
@@ -596,7 +609,8 @@ export default function InteractiveTest() {
           pictureIndex,
           subQuestionIndex,
           questions: currentQuestion.questions || [],
-          expectedKeywords: currentQuestion.questions?.[subQuestionIndex]?.expectedKeywords || currentQuestion.evaluationCriteria?.expectedKeywords || []
+          expectedKeywords: currentQuestion.questions?.[subQuestionIndex]?.expectedKeywords || currentQuestion.evaluationCriteria?.expectedKeywords || [],
+          attemptsCount
         }));
       } else if (stage === "reading") {
         formData.append("context", JSON.stringify({
@@ -660,9 +674,15 @@ export default function InteractiveTest() {
         // 6. Handle automatic stage transitions
         if (stage === "picture" && !data.stageComplete) {
           if (typeof data.nextSubQuestionIndex === "number") {
-            setSubQuestionIndex(data.nextSubQuestionIndex);
+            if (data.nextSubQuestionIndex === subQuestionIndex) {
+              setAttemptsCount(prev => prev + 1);
+            } else {
+              setSubQuestionIndex(data.nextSubQuestionIndex);
+              setAttemptsCount(0);
+            }
           } else {
             setSubQuestionIndex(prev => prev + 1);
+            setAttemptsCount(0);
           }
         }
 
@@ -1346,6 +1366,7 @@ export default function InteractiveTest() {
                 setPictureIndex(0);
                 setSubQuestionIndex(0);
                 lastAskedPicIndexRef.current = null;
+                setAttemptsCount(0);
                 setKeywordsHitPic1(0);
                 setTotalProbingTurns(0);
                 setWritingTaskIndex(0);
@@ -1374,7 +1395,7 @@ export default function InteractiveTest() {
 
   // 3. Main Testing stages interface
   return (
-    <div className="bg-slate-50 dark:bg-dark-bg flex flex-col h-screen overflow-hidden w-full max-w-[95%] lg:max-w-[1400px] mx-auto relative select-none">
+    <div className="bg-slate-50 dark:bg-dark-bg flex flex-col h-[100dvh] overflow-hidden w-full max-w-[95%] lg:max-w-[1400px] mx-auto relative select-none">
       {/* Hidden audio element for TTS */}
       <audio ref={audioRef} className="hidden" />
 
@@ -1427,11 +1448,11 @@ export default function InteractiveTest() {
 
 
       {/* Main Workspace Area — fullscreen per stage on mobile */}
-      <div className="flex-1 p-4 min-h-0 overflow-hidden relative">
-        <div className="h-full w-full bg-white dark:bg-slate-900 rounded-3xl border-4 border-slate-150 dark:border-slate-800 shadow-md p-4 md:p-6 overflow-hidden">
+      <div className="flex-1 min-h-0 overflow-hidden relative">
+        <div className="absolute inset-4 bg-white dark:bg-slate-900 rounded-3xl border-4 border-slate-150 dark:border-slate-800 shadow-md p-4 md:p-6 overflow-hidden">
           
           {/* Grid structure: side-by-side on desktop, tabs on mobile */}
-          <div className="h-full w-full grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-0 overflow-hidden">
+          <div className="h-full w-full grid grid-cols-1 grid-rows-[minmax(0,1fr)] lg:grid-rows-none lg:grid-cols-12 gap-6 min-h-0 overflow-hidden">
             
             {/* Left Column: Tranh & Bài học */}
             <div className={`lg:col-span-6 flex flex-col min-h-0 overflow-y-auto ${activeTab === "progress" ? "flex" : "hidden lg:flex"}`}>
@@ -1468,7 +1489,7 @@ export default function InteractiveTest() {
                  </div>
 
                  {currentQuestion.imagePath && (
-                   <div className="relative w-full max-w-xl mx-auto aspect-video md:max-h-[420px] flex-1 min-h-[220px] rounded-3xl overflow-hidden shadow-xl border-4 border-gradient-to-r from-amber-200 to-blue-200 dark:border-slate-700 hover:scale-[1.01] transition-transform duration-300 my-2 bg-slate-50 dark:bg-slate-950/40">
+                   <div className="relative w-full max-w-full sm:max-w-xl mx-auto aspect-video md:max-h-[420px] flex-1 min-h-[150px] sm:min-h-[220px] rounded-3xl overflow-hidden shadow-xl border-4 border-gradient-to-r from-amber-200 to-blue-200 dark:border-slate-700 hover:scale-[1.01] transition-transform duration-300 my-2 bg-slate-50 dark:bg-slate-950/40">
                      <Image 
                        src={currentQuestion.imagePath} 
                        alt="Study illustration" 
@@ -1748,7 +1769,7 @@ export default function InteractiveTest() {
       </div>
 
       {/* Simplified Bottom Control Panel */}
-      <div className="bg-white dark:bg-slate-900 border-t-4 border-slate-150 dark:border-slate-800 p-3 md:p-4 rounded-t-3xl shadow-lg shrink-0 select-none">
+      <div className="bg-white dark:bg-slate-900 border-t-4 border-slate-150 dark:border-slate-800 p-2.5 sm:p-4 rounded-t-3xl shadow-lg shrink-0 select-none">
         <div className="max-w-6xl mx-auto flex flex-col gap-2">
 
           {/* Practice Mode Vocabulary Hints Card */}
@@ -1773,33 +1794,33 @@ export default function InteractiveTest() {
             </div>
           )}
           
-          {/* Transcript + Mic button row */}
-          <div className="flex items-center gap-3">
-            {/* Transcript display */}
-            <div className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 px-4 py-2.5 rounded-2xl h-14 flex items-center overflow-hidden">
-              {isRecording ? (
-                <div className="flex items-center gap-3 w-full">
-                  <Soundwave />
-                  <div className="flex-1 text-left min-w-0">
-                    <p className="text-[10px] font-black text-rose-500 uppercase tracking-wider mb-0.5 animate-pulse">Con đang nói:</p>
-                    <p className="text-sm font-black text-slate-705 dark:text-slate-300 truncate">
-                      {realtimeTranscript || "Hãy nói đi con, cô đang nghe nè... 🎤"}
-                    </p>
-                  </div>
+          {/* Transcript display (Full width) */}
+          <div className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 px-4 py-2 rounded-2xl h-12 sm:h-14 flex items-center overflow-hidden shrink-0">
+            {isRecording ? (
+              <div className="flex items-center gap-3 w-full">
+                <Soundwave />
+                <div className="flex-1 text-left min-w-0">
+                  <p className="text-[9px] sm:text-[10px] font-black text-rose-500 uppercase tracking-wider mb-0.5 animate-pulse">Con đang nói:</p>
+                  <p className="text-xs sm:text-sm font-black text-slate-705 dark:text-slate-300 truncate">
+                    {realtimeTranscript || "Hãy nói đi con, cô đang nghe nè... 🎤"}
+                  </p>
                 </div>
-              ) : (
-                <p className="text-xs md:text-sm font-black text-slate-550 dark:text-slate-400 w-full text-center">
-                  {stage === "writing" 
-                    ? "Kéo thả hoặc bấm chữ cái để ghép từ ở trên nhé! ✍️" 
-                    : showMcq 
-                    ? "Chọn đáp án trắc nghiệm ở trên nhé! 🧩" 
-                    : isRecording 
-                    ? "Con cứ nói đi, cô sẽ tự nộp bài ⚡"
-                    : "Bấm nút 🎤 để nói với cô Lily"}
-                </p>
-              )}
-            </div>
+              </div>
+            ) : (
+              <p className="text-[11px] sm:text-xs md:text-sm font-black text-slate-550 dark:text-slate-400 w-full text-center">
+                {stage === "writing" 
+                  ? "Kéo thả hoặc bấm chữ cái để ghép từ ở trên nhé! ✍️" 
+                  : showMcq 
+                  ? "Chọn đáp án trắc nghiệm ở trên nhé! 🧩" 
+                  : isRecording 
+                  ? "Con cứ nói đi, cô sẽ tự nộp bài ⚡"
+                  : "Bấm nút 🎤 để nói với cô Lily"}
+              </p>
+            )}
+          </div>
 
+          {/* Action Row containing Mic trigger and child guide text */}
+          <div className="flex flex-col items-center gap-1.5 mt-1 w-full shrink-0">
             {/* Big Mic Button */}
             <div className="shrink-0">
               {!isRecording ? (
@@ -1807,25 +1828,25 @@ export default function InteractiveTest() {
                   type="button"
                   onClick={startRecording}
                   disabled={isProcessing || showMcq || stage === "writing"}
-                  className="w-16 h-16 md:w-18 md:h-18 bg-gradient-to-tr from-emerald-400 to-green-500 text-white rounded-full flex flex-col items-center justify-center hover:scale-105 active:scale-[0.95] disabled:opacity-20 disabled:hover:scale-100 transition-all shadow-md cursor-pointer border-b-6 border-emerald-700 shrink-0"
+                  className="w-14 h-14 sm:w-16 sm:h-16 md:w-18 md:h-18 bg-gradient-to-tr from-emerald-400 to-green-500 text-white rounded-full flex flex-col items-center justify-center hover:scale-105 active:scale-[0.95] disabled:opacity-20 disabled:hover:scale-100 transition-all shadow-md cursor-pointer border-b-6 border-emerald-700 shrink-0"
                 >
-                  <Mic className="w-7 h-7 mb-0.5" />
-                  <span className="text-[9px] font-black uppercase tracking-wider">NÓI</span>
+                  <Mic className="w-6 h-6 sm:w-7 sm:h-7 mb-0.5" />
+                  <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-wider">NÓI</span>
                 </button>
               ) : (
                 <button 
                   type="button"
                   onClick={stopRecording}
-                  className="w-16 h-16 bg-gradient-to-tr from-rose-400 to-red-500 text-white rounded-full flex flex-col items-center justify-center hover:scale-105 active:scale-[0.95] animate-pulse-slow shadow-md shadow-rose-200 cursor-pointer border-b-4 border-rose-700"
+                  className="w-14 h-14 sm:w-16 sm:h-16 md:w-18 md:h-18 bg-gradient-to-tr from-rose-400 to-red-500 text-white rounded-full flex flex-col items-center justify-center hover:scale-105 active:scale-[0.95] animate-pulse-slow shadow-md shadow-rose-200 cursor-pointer border-b-6 border-rose-700 shrink-0"
                 >
-                  <Square className="w-5 h-5 mb-0.5" />
-                  <span className="text-[8px] font-black uppercase tracking-wider">DỪNG</span>
+                  <Square className="w-4 h-4 sm:w-5 sm:h-5 mb-0.5" />
+                  <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-wider">DỪNG</span>
                 </button>
               )}
             </div>
 
             {/* Hint message for children */}
-            <p className="text-center text-[10px] text-slate-450 dark:text-slate-500 font-extrabold select-none">
+            <p className="text-center text-[10px] text-slate-450 dark:text-slate-500 font-extrabold select-none max-w-xs sm:max-w-md">
               {stage === "writing" 
                 ? "Con hãy kéo thả các chữ cái hoặc bấm để ghép từ nhé! ✍️" 
                 : showMcq 

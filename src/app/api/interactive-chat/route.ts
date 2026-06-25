@@ -81,6 +81,7 @@ Follow this exact flow:
       const pictureIndex = context.pictureIndex || 0;
       const subQuestionIndex = typeof context.subQuestionIndex === "number" ? context.subQuestionIndex : 0;
       const questions = context.questions || [];
+      const attemptsCount = typeof context.attemptsCount === "number" ? context.attemptsCount : 0;
 
       stageInstructions = `
 We are in the Picture Description/Differences stage for Picture ${pictureIndex + 1}.
@@ -88,11 +89,13 @@ Here is the questions array for this picture:
 ${JSON.stringify(questions)}
 
 The child is currently at question index: ${subQuestionIndex}.
+The number of times the child has already answered this question incorrectly: ${attemptsCount}.
 Child's response: "${transcribedText}".
 
 Your tasks:
 1. Check if the child's response answers the question at index ${subQuestionIndex}. 
    - CRITICAL RULE: Be very generous and flexible. The child is a young learner (6-10 years old) and might make minor grammatical/pronunciation mistakes or use synonyms (e.g., they say "teachers teaching" in response to "What is the teacher doing?", or they say "slash room" instead of "classroom"). If the child's response semantically addresses the question, you MUST mark it as successfully answered.
+   - CRITICAL SKIP RULE: If the child's response does NOT correctly answer the question AND the child has already answered incorrectly ${attemptsCount} times (meaning attemptsCount >= 1): You MUST force this question to be marked as skipped/completed! Treat it as if they successfully answered it (but without adding it to keywordsHit), and force "nextSubQuestionIndex" to advance to the next index (e.g., ${subQuestionIndex + 1}). In "aiResponse", say a gentle encouraging phrase (like "That's okay! Good try! Let's check the next one.") and ask the next question at questions[nextSubQuestionIndex].examinerScript.
 2. Check if the child's response also answers any of the subsequent questions (indices ${subQuestionIndex + 1}, ${subQuestionIndex + 2}, etc.) in the questions array (this is "real-time pacing" / answering questions in advance).
 3. Identify all questions from index ${subQuestionIndex} onwards that the child has successfully answered in this turn.
 4. Output their indices in the "answeredIndices" array (e.g., [0] or [0, 1]).
