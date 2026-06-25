@@ -296,6 +296,11 @@ export default function AnalyticsDashboard() {
               <p className="text-slate-500 font-medium mt-1">Phân tích chuyên sâu dữ liệu bài kiểm tra đầu vào và lộ trình phát triển.</p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
+              <Link href="/dashboard/interactive">
+                <button className="flex items-center gap-1.5 bg-sky-600 hover:bg-sky-700 text-white text-sm font-extrabold px-5 py-2 rounded-full shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer">
+                  <span>💬</span> Lịch Sử Hội Thoại AI
+                </button>
+              </Link>
               <Link href="/dashboard/mascots">
                 <button className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-extrabold px-5 py-2 rounded-full shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer">
                   <Sparkles className="w-4 h-4 text-amber-300 fill-amber-300 animate-pulse" />

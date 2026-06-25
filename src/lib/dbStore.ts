@@ -8,12 +8,17 @@ interface GlobalWithAssessments {
   inMemoryQuestionsStore?: any[];
   inMemoryContextTypesStore?: any[];
   inMemorySkillGroupsStore?: any[];
+  inMemoryInteractiveSessionsStore?: any[];
 }
 
 const g = globalThis as unknown as GlobalWithAssessments;
 
 if (!g.inMemoryAssessmentsStore) {
   g.inMemoryAssessmentsStore = [];
+}
+
+if (!g.inMemoryInteractiveSessionsStore) {
+  g.inMemoryInteractiveSessionsStore = [];
 }
 
 if (!g.inMemoryContextTypesStore) {
@@ -88,3 +93,4 @@ export const inMemoryAssessments = g.inMemoryAssessmentsStore;
 export const inMemoryQuestions = g.inMemoryQuestionsStore;
 export const inMemoryContextTypes = g.inMemoryContextTypesStore || [];
 export const inMemorySkillGroups = g.inMemorySkillGroupsStore || [];
+export const inMemoryInteractiveSessions = g.inMemoryInteractiveSessionsStore || [];

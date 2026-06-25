@@ -134,6 +134,10 @@ export default function InteractiveTest() {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Develop Mode Simulation Mock Inputs
+  const [isDevModeEnabled, setIsDevModeEnabled] = useState(false);
+  const [devInputText, setDevInputText] = useState("");
+
   // Real-time and Child-friendly states (simplified: always real-time, always auto-mic)
   const isRealtimeMode = true;
   const autoActivateMic = true;
@@ -171,6 +175,9 @@ export default function InteractiveTest() {
       if (!SpeechRecognitionClass) {
         setIsSpeechSupported(false);
       }
+
+      // Check if developer mode is enabled in homepage settings
+      setIsDevModeEnabled(localStorage.getItem("dev_mode_enabled") === "true");
     }
   }, []);
 
@@ -179,6 +186,21 @@ export default function InteractiveTest() {
     if (typeof window !== "undefined") {
       localStorage.setItem("preferred_accent_voice", voiceCode);
     }
+  };
+
+  const handleMockTextSubmission = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!devInputText.trim() || isProcessing) return;
+    const textToSend = devInputText.trim();
+    setDevInputText("");
+    
+    // Simulate real-time SpeechRecognition transcription
+    realtimeTranscriptRef.current = textToSend;
+    setRealtimeTranscript(textToSend);
+    
+    // Call handleAudioSubmission with an empty blob to trigger the API flow
+    const emptyBlob = new Blob([new Uint8Array(100)], { type: "audio/webm" });
+    await handleAudioSubmission(emptyBlob);
   };
   
   // Custom Kid States collected during the test
@@ -242,6 +264,9 @@ export default function InteractiveTest() {
   // MongoDB sync states
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState<boolean | null>(null);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [selectedRatingStars, setSelectedRatingStars] = useState<number | null>(null);
+  const [hoveredRatingStars, setHoveredRatingStars] = useState<number | null>(null);
   
   // Transition stage management to prevent microphone auto-activation race condition
   const [isTransitioningStage, setIsTransitioningStage] = useState(false);
@@ -980,11 +1005,63 @@ export default function InteractiveTest() {
       };
 
       setScores(computedScores);
+      autoSaveInteractiveSession(computedScores);
 
       // Auto-transition to final Report Card
       setTimeout(() => {
         setStage("results");
       }, 2500);
+    }
+  };
+
+  const autoSaveInteractiveSession = async (computedScores: typeof scores) => {
+    try {
+      console.log("💾 Autosaving interactive session to database (default: no rating)...");
+      const overallLevelStr = computedScores.speaking >= 85 ? "Flyers (A2)" : computedScores.speaking >= 60 ? "Movers (A1)" : "Starters (Pre-A1)";
+      
+      const transcriptToSave = messages.map(m => ({
+        role: m.role,
+        content: m.content,
+        stage: m.stage
+      }));
+
+      const res = await fetch("/api/interactive-sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          kidName: kidName || "Con",
+          kidAge: Number(kidAge || 7),
+          scores: computedScores,
+          chatHistory: transcriptToSave,
+          overallLevel: overallLevelStr,
+          userId: `kid_entrance_${Date.now()}`
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setActiveSessionId(data.id);
+        console.log(`💾 Autosave successful! Created record: ${data.id}`);
+      }
+    } catch (err) {
+      console.error("❌ Lỗi tự động lưu phiên làm bài:", err);
+    }
+  };
+
+  const updateInteractiveSessionStars = async (stars: number) => {
+    if (!activeSessionId) return;
+    try {
+      console.log(`⭐ Updating session ${activeSessionId} satisfaction rating to ${stars} stars...`);
+      const res = await fetch(`/api/interactive-sessions?id=${activeSessionId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentStars: stars })
+      });
+      const data = await res.json();
+      if (data.success) {
+        console.log("⭐ Satisfaction rating updated successfully!");
+      }
+    } catch (err) {
+      console.error("❌ Lỗi cập nhật số sao đánh giá:", err);
     }
   };
 
@@ -1194,6 +1271,40 @@ export default function InteractiveTest() {
 
         <main className="max-w-3xl w-full mx-auto px-3 md:px-4 mt-6 md:mt-8 flex flex-col gap-6 md:gap-8 relative z-10">
           
+          {/* Satisfaction Star Rating Card */}
+          <section className="bg-white dark:bg-slate-900 rounded-3xl border-4 border-indigo-100 dark:border-indigo-850 p-4 md:p-6 shadow-md text-center w-full animate-fade-in relative z-20">
+            <h3 className="text-sm md:text-base font-black text-slate-805 dark:text-slate-100 flex items-center justify-center gap-1.5 mb-1.5 font-sans">
+              <span>🌟</span> Con đánh giá độ hài lòng về bài test này nhé!
+            </h3>
+            <p className="text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 mb-3 font-sans">
+              Hãy bấm vào các ngôi sao bên dưới để tặng cô Lily sao nhé! 5 sao là bé cực kỳ thích đó! ⭐
+            </p>
+            <div className="flex items-center justify-center gap-3">
+              {[1, 2, 3, 4, 5].map((starIndex) => (
+                <button
+                  key={starIndex}
+                  type="button"
+                  onClick={() => {
+                    setSelectedRatingStars(starIndex);
+                    updateInteractiveSessionStars(starIndex);
+                  }}
+                  onMouseEnter={() => setHoveredRatingStars(starIndex)}
+                  onMouseLeave={() => setHoveredRatingStars(null)}
+                  className="transition-transform duration-200 hover:scale-125 focus:outline-none cursor-pointer text-4xl select-none"
+                >
+                  <span className={(starIndex <= (hoveredRatingStars ?? selectedRatingStars ?? 0)) ? "text-amber-400 drop-shadow-md" : "text-slate-200 dark:text-slate-700"}>
+                    ★
+                  </span>
+                </button>
+              ))}
+            </div>
+            {selectedRatingStars !== null && (
+              <p className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 mt-2 tracking-wide uppercase animate-pulse">
+                Cảm ơn con đã tặng cô {selectedRatingStars} sao yêu thích! 🎉
+              </p>
+            )}
+          </section>
+
           {/* Certificate Showcase Card */}
           <section className="bg-white dark:bg-slate-900 rounded-3xl border-4 border-amber-300 dark:border-amber-800 p-5 md:p-8 shadow-xl text-center relative overflow-hidden">
             <div className="absolute top-2 left-6 text-2xl animate-bounce" style={{ animationDelay: "1s" }}>✨</div>
@@ -1418,6 +1529,9 @@ export default function InteractiveTest() {
                 setWritingTaskIndex(0);
                 setSpellingCorrect1(null);
                 setSpellingCorrect2(null);
+                setActiveSessionId(null);
+                setSelectedRatingStars(null);
+                setHoveredRatingStars(null);
               }}
               className="btn-3d-yellow w-full sm:w-auto px-8 py-4 text-sm tracking-wider uppercase flex items-center justify-center gap-1 hover:scale-105 cursor-pointer"
             >
@@ -1893,6 +2007,25 @@ export default function InteractiveTest() {
                 </button>
               )}
             </div>
+
+            {isDevModeEnabled && !showMcq && stage !== "writing" && (
+              <form onSubmit={handleMockTextSubmission} className="w-full max-w-sm flex gap-2 mt-2 px-4">
+                <input
+                  type="text"
+                  value={devInputText}
+                  onChange={(e) => setDevInputText(e.target.value)}
+                  placeholder="Giả lập lời nói của bé (Dev)..."
+                  className="flex-1 bg-slate-100 dark:bg-slate-800 border border-slate-350 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <button
+                  type="submit"
+                  disabled={isProcessing}
+                  className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-black px-4 py-2 rounded-xl transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  Gửi
+                </button>
+              </form>
+            )}
 
             {/* Hint message for children */}
             <p className="text-center text-[10px] text-slate-450 dark:text-slate-500 font-extrabold select-none max-w-xs sm:max-w-md">
