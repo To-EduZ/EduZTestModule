@@ -1468,12 +1468,12 @@ export default function InteractiveTest() {
                  </div>
 
                  {currentQuestion.imagePath && (
-                   <div className="relative w-full max-w-xl mx-auto aspect-video md:max-h-[420px] flex-1 min-h-[220px] rounded-3xl overflow-hidden shadow-xl border-4 border-gradient-to-r from-amber-200 to-blue-200 dark:border-slate-700 hover:scale-[1.01] transition-transform duration-300 my-2">
+                   <div className="relative w-full max-w-xl mx-auto aspect-video md:max-h-[420px] flex-1 min-h-[220px] rounded-3xl overflow-hidden shadow-xl border-4 border-gradient-to-r from-amber-200 to-blue-200 dark:border-slate-700 hover:scale-[1.01] transition-transform duration-300 my-2 bg-slate-50 dark:bg-slate-950/40">
                      <Image 
                        src={currentQuestion.imagePath} 
                        alt="Study illustration" 
                        fill 
-                       className="object-cover"
+                       className="object-contain"
                        sizes="(max-width: 768px) 100vw, 700px"
                        priority
                      />
@@ -1684,7 +1684,7 @@ export default function InteractiveTest() {
             </div>
 
             {/* Right Column: Trò chuyện cùng cô */}
-            <div className="lg:col-span-6 flex flex-col min-h-0 lg:border-l-4 border-slate-100 dark:border-slate-800 lg:pl-6 hidden lg:flex">
+            <div className={`lg:col-span-6 flex flex-col min-h-0 lg:border-l-4 border-slate-100 dark:border-slate-800 lg:pl-6 ${activeTab === "chat" ? "flex" : "hidden lg:flex"}`}>
 
               {/* Dialogue exchange box (auto scroll) */}
               <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0 bg-slate-50 dark:bg-slate-950/40 rounded-2xl border border-slate-100 dark:border-slate-800">

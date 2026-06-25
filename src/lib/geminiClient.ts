@@ -98,7 +98,7 @@ export async function callGemini(
     const choice = completion.choices[0];
     if (!choice) throw new Error("OpenRouter Gemini returned empty response.");
 
-    if (choice.finish_reason === "error" || (choice as any).error) {
+    if ((choice.finish_reason as string) === "error" || (choice as any).error) {
       const errMsg = (choice as any).error?.message || "OpenRouter generation error";
       const errCode = (choice as any).error?.code || 500;
       const error = new Error(`OpenRouter Error ${errCode}: ${errMsg}`);
@@ -186,7 +186,7 @@ export async function callGeminiVision(
     const choice = completion.choices[0];
     if (!choice) throw new Error("OpenRouter Gemini Vision returned empty response.");
 
-    if (choice.finish_reason === "error" || (choice as any).error) {
+    if ((choice.finish_reason as string) === "error" || (choice as any).error) {
       const errMsg = (choice as any).error?.message || "OpenRouter Vision generation error";
       const errCode = (choice as any).error?.code || 500;
       const error = new Error(`OpenRouter Error ${errCode}: ${errMsg}`);
