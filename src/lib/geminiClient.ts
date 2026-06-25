@@ -84,10 +84,10 @@ export async function callGemini(
     );
   }
 
-  const makeRequest = async (apiKey: string): Promise<string> => {
+  const makeRequest = async (apiKey: string, modelName: string): Promise<string> => {
     const client = createGeminiClient(apiKey);
     const completion = await client.chat.completions.create({
-      model: isOpenRouterKey(apiKey) ? "google/gemini-2.5-flash" : "gemini-2.5-flash",
+      model: modelName,
       messages,
       max_tokens: maxTokens,
       temperature,
@@ -111,9 +111,12 @@ export async function callGemini(
     return content;
   };
 
-  // 1. Try primary key
+  const primaryModel = isOpenRouterKey(primaryKey) ? "google/gemini-2.5-flash" : "gemini-2.5-flash";
+  const fallbackModel = isOpenRouterKey(primaryKey) ? "deepseek/deepseek-v4-flash" : "gemini-2.5-flash";
+
+  // 1. Try primary key with primary model
   try {
-    return await makeRequest(primaryKey);
+    return await makeRequest(primaryKey, primaryModel);
   } catch (primaryErr: any) {
     const isRetryable =
       primaryErr?.status === 429 ||
@@ -122,19 +125,53 @@ export async function callGemini(
       (typeof primaryErr?.message === "string" &&
         primaryErr.message.includes("rate limit"));
 
-    // 2. Try backup key if available and error is retryable
-    if (isRetryable && backupKey && backupKey !== "your_backup_gemini_api_key_here") {
-      console.warn(
-        `⚠️ [GeminiClient] Primary key failed (${primaryErr?.status ?? primaryErr?.message}). Retrying with backup key...`
-      );
-      try {
-        return await makeRequest(backupKey);
-      } catch (backupErr: any) {
-        console.error(
-          "❌ [GeminiClient] Backup key also failed:",
-          backupErr?.message
+    if (isRetryable) {
+      // 2. Try primary key with fallback model (if OpenRouter and models differ)
+      if (isOpenRouterKey(primaryKey) && fallbackModel !== primaryModel) {
+        console.warn(
+          `⚠️ [GeminiClient] Primary key with ${primaryModel} failed (${primaryErr?.status ?? primaryErr?.message}). Retrying with fallback model ${fallbackModel}...`
         );
-        throw backupErr;
+        try {
+          return await makeRequest(primaryKey, fallbackModel);
+        } catch (fallbackErr: any) {
+          console.warn(
+            `⚠️ [GeminiClient] Fallback model ${fallbackModel} also failed on primary key:`,
+            fallbackErr?.message
+          );
+        }
+      }
+
+      // 3. Try backup key if available and error is retryable
+      if (backupKey && backupKey !== "your_backup_gemini_api_key_here") {
+        const backupModel = isOpenRouterKey(backupKey) ? "google/gemini-2.5-flash" : "gemini-2.5-flash";
+        const backupFallback = isOpenRouterKey(backupKey) ? "deepseek/deepseek-v4-flash" : "gemini-2.5-flash";
+
+        console.warn(
+          `⚠️ [GeminiClient] Retrying with backup key...`
+        );
+        try {
+          return await makeRequest(backupKey, backupModel);
+        } catch (backupErr: any) {
+          if (isOpenRouterKey(backupKey) && backupFallback !== backupModel) {
+            console.warn(
+              `⚠️ [GeminiClient] Backup key with ${backupModel} failed. Retrying backup with fallback model ${backupFallback}...`
+            );
+            try {
+              return await makeRequest(backupKey, backupFallback);
+            } catch (backupFallbackErr: any) {
+              console.error(
+                "❌ [GeminiClient] Backup key and fallback model also failed:",
+                backupFallbackErr?.message
+              );
+              throw backupFallbackErr;
+            }
+          }
+          console.error(
+            "❌ [GeminiClient] Backup key failed:",
+            backupErr?.message
+          );
+          throw backupErr;
+        }
       }
     }
 
