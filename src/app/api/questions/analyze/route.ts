@@ -5,6 +5,7 @@ import { connectToDatabase } from "@/lib/mongodb";
 import Question from "@/models/Question";
 import SkillGroup from "@/models/SkillGroup";
 import { inMemoryQuestions, inMemorySkillGroups } from "@/lib/dbStore";
+import { callGeminiVision, safeJsonParse } from "@/lib/geminiClient";
 
 const groq = new OpenAI({
   apiKey: process.env.GROQ_API_KEY,
@@ -178,14 +179,12 @@ You MUST respond strictly in the following JSON format:
     // 4. Query Google Gemini 2.5 Flash Model
     console.log(`🤖 [AI Auto-Digitalizer] Đang phân tích nội dung học liệu qua Gemini 2.5 Flash...`);
 
-    if (!process.env.GEMINI_API_KEY) {
+    if (!process.env.OPENROUTER_API_KEY && !process.env.GEMINI_API_KEY) {
       return NextResponse.json(
-        { error: "Vui lòng cấu hình GEMINI_API_KEY trong file .env.local để sử dụng tính năng số hóa AI tự động! 🔑" },
+        { error: "Vui lòng cấu hình OPENROUTER_API_KEY hoặc GEMINI_API_KEY trong file .env để sử dụng tính năng số hóa AI tự động! 🔑" },
         { status: 500 }
       );
     }
-
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
 
     const geminiPrompt = `You are an expert Cambridge YLE (Young Learners English - Starters, Movers, Flyers) examiner and curriculum designer for primary children.
 Your task is to analyze the uploaded exam picture (which could be a Scene Description, Object Card, Storytelling sequence, or Find the Differences) and automatically generate structured metadata matching the Cambridge YLE exam standard.
@@ -236,48 +235,9 @@ You MUST respond strictly in the following JSON format:
   ]
 }`;
 
-    const geminiPayload = {
-      contents: [
-        {
-          parts: [
-            {
-              text: geminiPrompt
-            },
-            {
-              inlineData: {
-                mimeType: mimeType,
-                data: base64Image
-              }
-            }
-          ]
-        }
-      ],
-      generationConfig: {
-        responseMimeType: "application/json"
-      }
-    };
-
-    const geminiResponse = await fetch(geminiUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(geminiPayload)
-    });
-
-    if (!geminiResponse.ok) {
-      const errorText = await geminiResponse.text();
-      throw new Error(`Gemini API error: ${geminiResponse.status} - ${errorText}`);
-    }
-
-    const geminiData = await geminiResponse.json();
-    const aiResponseContent = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!aiResponseContent) {
-      throw new Error("Gemini Vision trả về phản hồi rỗng.");
-    }
-
-    console.log("✅ [AI Auto-Digitalizer] Phân tích Gemini hoàn tất:", aiResponseContent);
-    const parsedData = JSON.parse(aiResponseContent);
+    const aiResponseContent = await callGeminiVision(geminiPrompt, base64Image, mimeType);
+    console.log("✅ [AI Auto-Digitalizer] Phân tích OpenRouter Gemini hoàn tất:", aiResponseContent);
+    const parsedData = safeJsonParse(aiResponseContent);
 
     // Keep backwards compatibility for old components by copying the first sub-question to the top level
     if (parsedData.questions && parsedData.questions.length > 0) {

@@ -1,52 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
+import { callGemini, safeJsonParse } from "@/lib/geminiClient";
 
 const groq = new OpenAI({
   apiKey: process.env.GROQ_API_KEY,
   baseURL: "https://api.groq.com/openai/v1",
 });
-
-// Helper function to call Gemini 2.5 Flash
-async function queryGeminiFlash(prompt: string): Promise<any> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error("GEMINI_API_KEY is not configured.");
-  }
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-  const payload = {
-    contents: [
-      {
-        parts: [
-          { text: prompt }
-        ]
-      }
-    ],
-    generationConfig: {
-      responseMimeType: "application/json"
-    }
-  };
-
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(payload)
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
-  }
-
-  const data = await response.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) {
-    throw new Error("Gemini response is empty.");
-  }
-
-  return JSON.parse(text);
-}
 
 export async function POST(req: NextRequest) {
   try {
@@ -183,9 +142,10 @@ You MUST return a JSON object with the following fields:
   "keywordsHit": ["keyword1", "keyword2"] (list of expected keywords that were found/matched in the child's response, only for "picture" stage)
 }`;
 
-    console.log("🤖 [Gemini 2.5 Flash] Querying Gemini model for interactive-chat...");
-    const parsedData = await queryGeminiFlash(geminiPrompt);
-    console.log("✅ [Gemini 2.5 Flash] Response parsed:", parsedData);
+    console.log("🤖 [OpenRouter Gemini 2.5 Flash] Querying Gemini model for interactive-chat...");
+    const rawContent = await callGemini([{ role: "user", content: geminiPrompt }], { responseFormat: "json_object" });
+    const parsedData = safeJsonParse(rawContent);
+    console.log("✅ [OpenRouter Gemini 2.5 Flash] Response parsed:", parsedData);
 
     return NextResponse.json({
       success: true,

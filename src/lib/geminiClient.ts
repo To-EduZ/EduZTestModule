@@ -8,15 +8,18 @@
  * - safeJsonParse: strips markdown code-fence wrappers before parsing JSON
  * - callGeminiVision: direct REST call for multimodal (vision) tasks
  */
-
 import OpenAI from "openai";
 
-// ─── OpenAI-compatible Gemini client factory ────────────────────────────────
+// ─── OpenAI-compatible Gemini client factory for OpenRouter ──────────────────
 
 function createGeminiClient(apiKey: string): OpenAI {
   return new OpenAI({
     apiKey,
-    baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
+    baseURL: "https://openrouter.ai/api/v1",
+    defaultHeaders: {
+      "HTTP-Referer": "https://eduz.vn", // Optional OpenRouter header
+      "X-Title": "EduZ YLE Test Module", // Optional OpenRouter header
+    },
   });
 }
 
@@ -60,19 +63,19 @@ export async function callGemini(
     responseFormat = "json_object",
   } = options;
 
-  const primaryKey = process.env.GEMINI_API_KEY;
+  const primaryKey = process.env.OPENROUTER_API_KEY || process.env.GEMINI_API_KEY;
   const backupKey = process.env.GEMINI_API_KEY_BACKUP;
 
   if (!primaryKey) {
     throw new Error(
-      "GEMINI_API_KEY is not configured. Please add it to your .env file."
+      "Neither OPENROUTER_API_KEY nor GEMINI_API_KEY is configured. Please add one to your .env file."
     );
   }
 
   const makeRequest = async (apiKey: string): Promise<string> => {
     const client = createGeminiClient(apiKey);
     const completion = await client.chat.completions.create({
-      model: "gemini-2.5-flash",
+      model: "google/gemini-2.5-flash",
       messages,
       max_tokens: maxTokens,
       temperature,
@@ -81,7 +84,7 @@ export async function callGemini(
         : {}),
     });
     const content = completion.choices[0]?.message?.content ?? "";
-    if (!content) throw new Error("Gemini returned empty response.");
+    if (!content) throw new Error("OpenRouter Gemini returned empty response.");
     return content;
   };
 
@@ -118,54 +121,45 @@ export async function callGemini(
 }
 
 // ─── callGeminiVision ────────────────────────────────────────────────────────
-// Direct REST call for multimodal (vision) tasks where inline image data is needed.
-// Mirrors the existing implementation in questions/analyze/route.ts.
+// OpenAI SDK chat completion call for multimodal (vision) tasks.
+// Compatible with OpenRouter.
 
 export async function callGeminiVision(
   prompt: string,
   base64Image: string,
   mimeType: string
 ): Promise<string> {
-  const primaryKey = process.env.GEMINI_API_KEY;
+  const primaryKey = process.env.OPENROUTER_API_KEY || process.env.GEMINI_API_KEY;
   const backupKey = process.env.GEMINI_API_KEY_BACKUP;
 
   if (!primaryKey) {
-    throw new Error("GEMINI_API_KEY is not configured.");
+    throw new Error("Neither OPENROUTER_API_KEY nor GEMINI_API_KEY is configured.");
   }
 
   const makeVisionRequest = async (apiKey: string): Promise<string> => {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-    const payload = {
-      contents: [
+    const client = createGeminiClient(apiKey);
+    const completion = await client.chat.completions.create({
+      model: "google/gemini-2.5-flash",
+      messages: [
         {
-          parts: [
-            { text: prompt },
-            { inlineData: { mimeType, data: base64Image } },
+          role: "user",
+          content: [
+            { type: "text", text: prompt },
+            {
+              type: "image_url",
+              image_url: {
+                url: `data:${mimeType};base64,${base64Image}`,
+              },
+            },
           ],
         },
       ],
-      generationConfig: { responseMimeType: "application/json" },
-    };
-
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      response_format: { type: "json_object" as const },
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      const err: any = new Error(
-        `Gemini Vision API error: ${response.status} - ${errorText}`
-      );
-      err.status = response.status;
-      throw err;
-    }
-
-    const data = await response.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) throw new Error("Gemini Vision response is empty.");
-    return text;
+    const content = completion.choices[0]?.message?.content ?? "";
+    if (!content) throw new Error("OpenRouter Gemini Vision returned empty response.");
+    return content;
   };
 
   try {
@@ -186,3 +180,4 @@ export async function callGeminiVision(
     throw primaryErr;
   }
 }
+

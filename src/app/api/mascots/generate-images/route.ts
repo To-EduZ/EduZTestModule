@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { v2 as cloudinary } from "cloudinary";
+import { callGemini, callGeminiVision, safeJsonParse } from "@/lib/geminiClient";
 
 // Configure Cloudinary SDK
 cloudinary.config({
@@ -38,13 +39,6 @@ async function uploadUrlToCloudinary(url: string) {
 
 // Helper: Generate Mascot Metadata using Gemini 2.5 Flash
 async function generateMascotMetadata(userPrompt: string, base64Image?: string, mimeType?: string) {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error("Không tìm thấy GEMINI_API_KEY trong cấu hình hệ thống.");
-  }
-
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-
   const instructionPrompt = `
 You are an expert AI assistant designing a language learning mascot for kids.
 Analyze the provided text prompt and/or reference image.
@@ -66,45 +60,17 @@ Output ONLY a valid JSON object matching this schema. Do not write any markdown 
     ? `User request: ${userPrompt}\n\n${instructionPrompt}` 
     : instructionPrompt;
 
-  const parts: any[] = [{ text: payloadText }];
-
+  let resultText = "";
   if (base64Image && mimeType) {
-    parts.push({
-      inlineData: {
-        mimeType: mimeType,
-        data: base64Image
-      }
-    });
-  }
-
-  const payload = {
-    contents: [{ parts }],
-    generationConfig: {
-      responseMimeType: "application/json"
-    }
-  };
-
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  });
-
-  if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(`Gemini vision error: ${res.status} - ${errorText}`);
-  }
-
-  const json = await res.json();
-  const resultText = json.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!resultText) {
-    throw new Error("Không thể trích xuất metadata từ Gemini.");
+    resultText = await callGeminiVision(payloadText, base64Image, mimeType);
+  } else {
+    resultText = await callGemini([{ role: "user", content: payloadText }]);
   }
 
   try {
-    return JSON.parse(resultText.trim());
+    return safeJsonParse(resultText);
   } catch (e) {
-    console.error("Failed to parse Gemini JSON:", resultText);
+    console.error("Failed to parse Mascot JSON:", resultText);
     throw new Error("Dữ liệu phản hồi từ AI không đúng định dạng JSON.");
   }
 }
