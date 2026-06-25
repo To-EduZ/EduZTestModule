@@ -101,7 +101,7 @@ Your tasks:
    - EXPECTED KEYWORDS RULE: The expectedKeywords list of each question is for scoring reference only. You MUST NOT require the child to say the exact expected keywords to pass. As long as their response semantically answers or references the question's topic, mark it as answered.
    - CRITICAL WRONG ANSWER RULE: If the child's response does NOT correctly answer the question:
      - If attemptsCount is 0 (first incorrect attempt): You MUST keep "nextSubQuestionIndex" at the current index (${subQuestionIndex}). Do NOT advance. In "aiResponse", encourage the child, provide a specific and helpful hint (gợi ý) to guide them (without stating the exact answer, e.g. describe the object/action or its traits based on the question's expectedKeywords), and ask the question again.
-     - If attemptsCount >= 1 (second incorrect attempt): You MUST force this question to be marked as completed! Force "nextSubQuestionIndex" to advance to the next index (${subQuestionIndex + 1}). In "aiResponse", reveal the correct answer clearly to the child (bật mí câu trả lời, e.g. "That's okay! It is a [expected keyword]!") and ask the next question at questions[nextSubQuestionIndex].examinerScript (or if stageComplete is true, transition to the next picture/stage).
+     - If attemptsCount >= 1 (second incorrect attempt): You MUST NOT keep asking or prompting for the same question. Force this question to be completed immediately! Force "nextSubQuestionIndex" to advance to the next index (${subQuestionIndex + 1}). In "aiResponse", reveal the correct answer clearly (e.g. "That's okay! It is a [expected keyword]!") and then transition to ask the next question at questions[nextSubQuestionIndex].examinerScript (or if stageComplete is true, transition to the next picture/stage).
 2. Check if the child's response also answers any of the subsequent questions (indices ${subQuestionIndex + 1}, ${subQuestionIndex + 2}, etc.) in the questions array (this is "real-time pacing" / answering questions in advance).
    - CRITICAL REAL-TIME PACING & ADVANCE ANSWERING RULE: If the child's response has *already* answered or mentioned the actions, objects, or details of any subsequent questions (e.g., they mentioned the boy is swinging or the girl is sliding in their first description), you MUST include those subsequent question indices in the "answeredIndices" array so they are marked as answered in advance. It is extremely annoying to the child to be asked a question they have already answered. Be very proactive in marking them as answered!
 3. Identify all questions from index ${subQuestionIndex} onwards that the child has successfully answered in this turn.
@@ -164,12 +164,49 @@ You MUST return a JSON object with the following fields:
     const parsedData = safeJsonParse(rawContent);
     console.log("✅ [OpenRouter Gemini 2.5 Flash] Response parsed:", parsedData);
 
+    let finalNextSubQuestionIndex = typeof parsedData.nextSubQuestionIndex === "number" ? parsedData.nextSubQuestionIndex : undefined;
+    let finalStageComplete = parsedData.stageComplete || false;
+    let finalAiResponse = parsedData.aiResponse || "";
+
+    if (stage === "picture") {
+      const pictureIndex = context.pictureIndex || 0;
+      const subQuestionIndex = typeof context.subQuestionIndex === "number" ? context.subQuestionIndex : 0;
+      const questions = context.questions || [];
+      const attemptsCount = typeof context.attemptsCount === "number" ? context.attemptsCount : 0;
+
+      // If attemptsCount >= 1 and the AI failed to advance, force progression programmatically
+      if (attemptsCount >= 1 && (finalNextSubQuestionIndex === undefined || finalNextSubQuestionIndex === subQuestionIndex)) {
+        console.warn("⚠️ LLM failed to advance subQuestionIndex on final attempt. Forcing progression programmatically.");
+        finalNextSubQuestionIndex = subQuestionIndex + 1;
+        if (finalNextSubQuestionIndex >= questions.length) {
+          finalStageComplete = true;
+        }
+
+        const currentQ = questions[subQuestionIndex];
+        const correctWord = currentQ?.evaluationCriteria?.expectedKeywords?.[0] || "correct answer";
+        
+        let nextPrompt = "";
+        if (finalStageComplete) {
+          if (pictureIndex === 0) {
+            nextPrompt = "Great job with the first picture! Now let's look at a second picture.";
+          } else {
+            nextPrompt = "Excellent! You did a great job with both pictures. Now, let's read a short story together.";
+          }
+        } else {
+          const nextQ = questions[finalNextSubQuestionIndex];
+          nextPrompt = nextQ?.examinerScript || "Let's check the next question.";
+        }
+
+        finalAiResponse = `That's okay! It is a ${correctWord}. 🌟 ${nextPrompt}`;
+      }
+    }
+
     return NextResponse.json({
       success: true,
       transcribedText,
-      aiResponse: parsedData.aiResponse,
-      stageComplete: parsedData.stageComplete || false,
-      nextSubQuestionIndex: typeof parsedData.nextSubQuestionIndex === "number" ? parsedData.nextSubQuestionIndex : undefined,
+      aiResponse: finalAiResponse,
+      stageComplete: finalStageComplete,
+      nextSubQuestionIndex: finalNextSubQuestionIndex,
       answeredIndices: Array.isArray(parsedData.answeredIndices) ? parsedData.answeredIndices : undefined,
       keywordsHit: Array.isArray(parsedData.keywordsHit) ? parsedData.keywordsHit : undefined,
       readingAccuracy: stage === "reading" ? readingAccuracy : undefined,

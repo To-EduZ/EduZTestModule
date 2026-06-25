@@ -1615,7 +1615,7 @@ export default function InteractiveTest() {
           <div className="h-full w-full flex flex-col lg:grid lg:grid-cols-12 gap-6 min-h-0 overflow-hidden">
             
             {/* Left Column: Tranh & Bài học */}
-            <div className="lg:col-span-6 flex flex-col min-h-0 overflow-y-auto h-[45dvh] lg:h-full shrink-0">
+            <div className={`lg:col-span-6 flex flex-col min-h-0 overflow-y-auto h-[45dvh] lg:h-full shrink-0 ${stage === "warmup" ? "hidden lg:flex" : ""}`}>
              {stage === "warmup" && (
                <div className="flex-1 flex flex-col justify-center items-center text-center p-4">
                  <div className="relative mb-6">
