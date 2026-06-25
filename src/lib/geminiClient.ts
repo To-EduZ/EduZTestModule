@@ -117,9 +117,9 @@ export async function callGemini(
   let fallbackModel = isOpenRouterKey(primaryKey) ? "deepseek/deepseek-v4-flash" : "gemini-2.5-flash";
 
   if (useDeepseekPrimary) {
-    primaryModel = "deepseek/deepseek-chat";
+    primaryModel = "deepseek/deepseek-v4-flash";
     fallbackModel = isOpenRouterKey(primaryKey) ? "google/gemini-2.5-flash" : "gemini-2.5-flash";
-    console.log("🚀 [GeminiClient] Running in DEVELOP MODE: Using DeepSeek as primary and Gemini as fallback.");
+    console.log("🚀 [GeminiClient] Running in DEVELOP MODE: Using DeepSeek v4 Flash as primary and Gemini as fallback.");
   }
 
   // 1. Try primary key with primary model
