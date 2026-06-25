@@ -142,6 +142,7 @@ export default function InteractiveTest() {
   const [isTtsSpeaking, setIsTtsSpeaking] = useState(false);
   const interactiveMode = "practice" as const;
   const [showVocabularyHint, setShowVocabularyHint] = useState(false);
+  const [isImageZoomed, setIsImageZoomed] = useState(false);
 
   const recognitionRef = useRef<any>(null);
   const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -1451,11 +1452,11 @@ export default function InteractiveTest() {
       <div className="flex-1 min-h-0 overflow-hidden relative">
         <div className="absolute inset-4 bg-white dark:bg-slate-900 rounded-3xl border-4 border-slate-150 dark:border-slate-800 shadow-md p-4 md:p-6 overflow-hidden">
           
-          {/* Grid structure: side-by-side on desktop, tabs on mobile */}
-          <div className="h-full w-full grid grid-cols-1 grid-rows-[minmax(0,1fr)] lg:grid-rows-none lg:grid-cols-12 gap-6 min-h-0 overflow-hidden">
+          {/* Grid structure: side-by-side on desktop, vertical stack on mobile */}
+          <div className="h-full w-full flex flex-col lg:grid lg:grid-cols-12 gap-6 min-h-0 overflow-hidden">
             
             {/* Left Column: Tranh & Bài học */}
-            <div className={`lg:col-span-6 flex flex-col min-h-0 overflow-y-auto ${activeTab === "progress" ? "flex" : "hidden lg:flex"}`}>
+            <div className="lg:col-span-6 flex flex-col min-h-0 overflow-y-auto h-[45dvh] lg:h-full shrink-0">
              {stage === "warmup" && (
                <div className="flex-1 flex flex-col justify-center items-center text-center p-4">
                  <div className="relative mb-6">
@@ -1489,7 +1490,10 @@ export default function InteractiveTest() {
                  </div>
 
                  {currentQuestion.imagePath && (
-                   <div className="relative w-full max-w-full sm:max-w-xl mx-auto aspect-video md:max-h-[420px] flex-1 min-h-[150px] sm:min-h-[220px] rounded-3xl overflow-hidden shadow-xl border-4 border-gradient-to-r from-amber-200 to-blue-200 dark:border-slate-700 hover:scale-[1.01] transition-transform duration-300 my-2 bg-slate-50 dark:bg-slate-950/40">
+                   <div 
+                     onClick={() => setIsImageZoomed(true)}
+                     className="relative w-full max-w-full sm:max-w-xl mx-auto aspect-video md:max-h-[420px] flex-1 min-h-[150px] sm:min-h-[220px] rounded-3xl overflow-hidden shadow-xl border-4 border-gradient-to-r from-amber-200 to-blue-200 dark:border-slate-700 hover:scale-[1.01] transition-transform duration-300 my-2 bg-slate-50 dark:bg-slate-950/40 cursor-pointer cursor-zoom-in"
+                   >
                      <Image 
                        src={currentQuestion.imagePath} 
                        alt="Study illustration" 
@@ -1705,7 +1709,7 @@ export default function InteractiveTest() {
             </div>
 
             {/* Right Column: Trò chuyện cùng cô */}
-            <div className={`lg:col-span-6 flex flex-col min-h-0 lg:border-l-4 border-slate-100 dark:border-slate-800 lg:pl-6 ${activeTab === "chat" ? "flex" : "hidden lg:flex"}`}>
+            <div className="lg:col-span-6 flex flex-col min-h-0 lg:border-l-4 border-slate-100 dark:border-slate-800 lg:pl-6 flex-1 lg:h-full">
 
               {/* Dialogue exchange box (auto scroll) */}
               <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0 bg-slate-50 dark:bg-slate-950/40 rounded-2xl border border-slate-100 dark:border-slate-800">
@@ -1773,7 +1777,7 @@ export default function InteractiveTest() {
         <div className="max-w-6xl mx-auto flex flex-col gap-2">
 
           {/* Practice Mode Vocabulary Hints Card */}
-          {showVocabularyHint && (
+          {(showVocabularyHint || (interactiveMode === "practice" && (stage === "picture" || stage === "reading"))) && (
             <div className="bg-amber-50 dark:bg-amber-955/20 border-2 border-dashed border-amber-300 dark:border-amber-905 rounded-2xl p-3 text-left animate-bounce-subtle shrink-0">
               <div className="flex items-center gap-2 mb-1.5">
                 <span className="text-lg">💡</span>
@@ -1862,6 +1866,35 @@ export default function InteractiveTest() {
         </div>
 
       </div>
+
+      {/* Image Zoom Modal Overlay */}
+      {isImageZoomed && currentQuestion?.imagePath && (
+        <div 
+          className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 cursor-zoom-out"
+          onClick={() => setIsImageZoomed(false)}
+        >
+          <div 
+            className="relative w-full max-w-4xl h-[80vh] rounded-3xl overflow-hidden shadow-2xl border-4 border-slate-700 bg-slate-950 flex items-center justify-center animate-pulse-slow"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button 
+              type="button"
+              className="absolute top-4 right-4 bg-white/20 hover:bg-white/40 text-white w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg cursor-pointer transition-colors z-10"
+              onClick={() => setIsImageZoomed(false)}
+            >
+              ✕
+            </button>
+            <Image 
+              src={currentQuestion.imagePath} 
+              alt="Zoomed illustration" 
+              fill
+              className="object-contain p-4"
+              sizes="100vw"
+              priority
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
