@@ -83,7 +83,7 @@ Follow this exact flow:
       const questions = context.questions || [];
 
       stageInstructions = `
-We are in the Picture Description stage for Picture ${pictureIndex + 1}.
+We are in the Picture Description/Differences stage for Picture ${pictureIndex + 1}.
 Here is the questions array for this picture:
 ${JSON.stringify(questions)}
 
@@ -91,15 +91,18 @@ The child is currently at question index: ${subQuestionIndex}.
 Child's response: "${transcribedText}".
 
 Your tasks:
-1. Check if the child's response answers the question at index ${subQuestionIndex} (compare against expectedKeywords and targetGrammar semantically).
+1. Check if the child's response answers the question at index ${subQuestionIndex}. 
+   - CRITICAL RULE: Be very generous and flexible. The child is a young learner (6-10 years old) and might make minor grammatical/pronunciation mistakes or use synonyms (e.g., they say "teachers teaching" in response to "What is the teacher doing?", or they say "slash room" instead of "classroom"). If the child's response semantically addresses the question, you MUST mark it as successfully answered.
 2. Check if the child's response also answers any of the subsequent questions (indices ${subQuestionIndex + 1}, ${subQuestionIndex + 2}, etc.) in the questions array (this is "real-time pacing" / answering questions in advance).
 3. Identify all questions from index ${subQuestionIndex} onwards that the child has successfully answered in this turn.
-4. Output their indices in the "answeredIndices" array (e.g. [0] or [0, 1]).
+4. Output their indices in the "answeredIndices" array (e.g., [0] or [0, 1]).
 5. Collect all keywords that were matched in the child's response from the expectedKeywords lists of the answered questions. Output them in the "keywordsHit" array. Matches can be semantic or word-level.
-6. Determine the "nextSubQuestionIndex": the index of the first unanswered question (e.g. if current is 0 and the child answered 0 and 1, next is 2).
+6. Determine the "nextSubQuestionIndex": the index of the first unanswered question (e.g., if current is 0 and the child successfully answered 0, next is 1; if they also answered 1, next is 2).
+   - CRITICAL RULE: If the current question at ${subQuestionIndex} was answered, nextSubQuestionIndex MUST be strictly greater than ${subQuestionIndex} (e.g., ${subQuestionIndex} + 1). You MUST NOT repeat the same index if it was answered.
 7. If all questions in the array have been answered (meaning nextSubQuestionIndex >= questions.length), set "stageComplete" to true.
 8. Formulate a cute, encouraging examiner comment (1-2 sentences with emojis) in "aiResponse":
-   - If stageComplete is false: congratulate/praise the child's answer and then ask the question at questions[nextSubQuestionIndex].examinerScript.
+   - CRITICAL RULE: You MUST NOT ask any question that has already been answered, and you MUST NOT re-ask the question that was just answered in this turn.
+   - If stageComplete is false: congratulate/praise the child's answer and then ask the next question at questions[nextSubQuestionIndex].examinerScript. Double check that you are asking the question at the NEW nextSubQuestionIndex, not the old one.
    - If stageComplete is true:
      - If pictureIndex is 0: the response MUST end with exactly: "Great job with the first picture! Now let's look at a second picture."
      - If pictureIndex is 1: the response MUST end with exactly: "Excellent! You did a great job with both pictures. Now, let's read a short story together."`;
