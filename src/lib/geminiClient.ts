@@ -43,6 +43,7 @@ export interface CallGeminiOptions {
   maxTokens?: number;
   temperature?: number;
   responseFormat?: "json_object" | "text";
+  useDeepseekPrimary?: boolean;
 }
 
 // ─── safeJsonParse ───────────────────────────────────────────────────────────
@@ -70,6 +71,7 @@ export async function callGemini(
     maxTokens = 600,
     temperature = 0.7,
     responseFormat = "json_object",
+    useDeepseekPrimary = false,
   } = options;
 
   const primaryKey = process.env.OPENROUTER_API_KEY || process.env.GEMINI_API_KEY;
@@ -111,8 +113,14 @@ export async function callGemini(
     return content;
   };
 
-  const primaryModel = isOpenRouterKey(primaryKey) ? "google/gemini-2.5-flash" : "gemini-2.5-flash";
-  const fallbackModel = isOpenRouterKey(primaryKey) ? "deepseek/deepseek-v4-flash" : "gemini-2.5-flash";
+  let primaryModel = isOpenRouterKey(primaryKey) ? "google/gemini-2.5-flash" : "gemini-2.5-flash";
+  let fallbackModel = isOpenRouterKey(primaryKey) ? "deepseek/deepseek-v4-flash" : "gemini-2.5-flash";
+
+  if (useDeepseekPrimary) {
+    primaryModel = "deepseek/deepseek-chat";
+    fallbackModel = isOpenRouterKey(primaryKey) ? "google/gemini-2.5-flash" : "gemini-2.5-flash";
+    console.log("🚀 [GeminiClient] Running in DEVELOP MODE: Using DeepSeek as primary and Gemini as fallback.");
+  }
 
   // 1. Try primary key with primary model
   try {

@@ -9,6 +9,7 @@ const groq = new OpenAI({
 
 export async function POST(req: NextRequest) {
   try {
+    const developMode = req.headers.get("x-develop-mode") === "true";
     const formData = await req.formData();
     const audioFile = formData.get("audio") as File | null;
     const textInput = formData.get("text") as string | null;
@@ -95,10 +96,12 @@ Child's response: "${transcribedText}".
 Your tasks:
 1. Check if the child's response answers the question at index ${subQuestionIndex}. 
    - CRITICAL RULE: Be very generous and flexible. The child is a young learner (6-10 years old) and might make minor grammatical/pronunciation mistakes or use synonyms (e.g., they say "teachers teaching" in response to "What is the teacher doing?", or they say "slash room" instead of "classroom"). If the child's response semantically addresses the question, you MUST mark it as successfully answered.
+   - EXPECTED KEYWORDS RULE: The expectedKeywords list of each question is for scoring reference only. You MUST NOT require the child to say the exact expected keywords to pass. As long as their response semantically answers or references the question's topic, mark it as answered.
    - CRITICAL WRONG ANSWER RULE: If the child's response does NOT correctly answer the question:
-     - If attemptsCount is 0: You MUST keep "nextSubQuestionIndex" at the current index (${subQuestionIndex}). Do NOT advance to the next question yet. In "aiResponse", say a gentle encouraging phrase (like "Good try! Let's try again." or "Can you see the boy?") and ask or rephrase the question at questions[${subQuestionIndex}].examinerScript.
-     - If attemptsCount >= 1: You MUST force this question to be marked as skipped/completed! Treat it as if they successfully answered it (but without adding it to keywordsHit), and force "nextSubQuestionIndex" to advance to the next index (${subQuestionIndex + 1}). In "aiResponse", say a gentle encouraging phrase (like "That's okay! Good try! Let's check the next one.") and ask the next question at questions[nextSubQuestionIndex].examinerScript.
+     - If attemptsCount is 0 (first incorrect attempt): You MUST keep "nextSubQuestionIndex" at the current index (${subQuestionIndex}). Do NOT advance. In "aiResponse", encourage the child, provide a specific and helpful hint (gợi ý) to guide them (without stating the exact answer, e.g. describe the object/action or its traits based on the question's expectedKeywords), and ask the question again.
+     - If attemptsCount >= 1 (second incorrect attempt): You MUST force this question to be marked as completed! Force "nextSubQuestionIndex" to advance to the next index (${subQuestionIndex + 1}). In "aiResponse", reveal the correct answer clearly to the child (bật mí câu trả lời, e.g. "That's okay! It is a [expected keyword]!") and ask the next question at questions[nextSubQuestionIndex].examinerScript (or if stageComplete is true, transition to the next picture/stage).
 2. Check if the child's response also answers any of the subsequent questions (indices ${subQuestionIndex + 1}, ${subQuestionIndex + 2}, etc.) in the questions array (this is "real-time pacing" / answering questions in advance).
+   - CRITICAL REAL-TIME PACING & ADVANCE ANSWERING RULE: If the child's response has *already* answered or mentioned the actions, objects, or details of any subsequent questions (e.g., they mentioned the boy is swinging or the girl is sliding in their first description), you MUST include those subsequent question indices in the "answeredIndices" array so they are marked as answered in advance. It is extremely annoying to the child to be asked a question they have already answered. Be very proactive in marking them as answered!
 3. Identify all questions from index ${subQuestionIndex} onwards that the child has successfully answered in this turn.
 4. Output their indices in the "answeredIndices" array (e.g., [0] or [0, 1]).
 5. Collect all keywords that were matched in the child's response from the expectedKeywords lists of the answered questions. Output them in the "keywordsHit" array. Matches can be semantic or word-level.
@@ -107,7 +110,8 @@ Your tasks:
 7. If all questions in the array have been answered (meaning nextSubQuestionIndex >= questions.length), or if the questions array is empty (questions.length is 0), you MUST set "stageComplete" to true.
 8. Formulate a cute, encouraging examiner comment (1-2 sentences with emojis) in "aiResponse":
    - CRITICAL RULE: You MUST NOT ask any question that has already been answered, and you MUST NOT re-ask the question that was just answered in this turn.
-   - If stageComplete is false: congratulate/praise the child's answer and then ask the next question at questions[nextSubQuestionIndex].examinerScript. Double check that you are asking the question at the NEW nextSubQuestionIndex, not the old one.
+   - CRITICAL SCRIPT RULE: If stageComplete is false, you MUST ask the question specified in questions[nextSubQuestionIndex].examinerScript. You are allowed to paraphrase/rephrase it slightly to make it sound more friendly or fit the conversation context, but you MUST NOT create entirely custom questions, change the main topic, or ask about unrelated details. Stick strictly to the original question's intent.
+   - If stageComplete is false: congratulate/praise the child's answer and then ask the question at questions[nextSubQuestionIndex].examinerScript (either the exact text or paraphrased as described above). Double check that you are asking the question at the NEW nextSubQuestionIndex, not the old one.
    - If stageComplete is true:
      - If pictureIndex is 0: the response MUST end with exactly: "Great job with the first picture! Now let's look at a second picture."
      - If pictureIndex is 1: the response MUST end with exactly: "Excellent! You did a great job with both pictures. Now, let's read a short story together."`;
@@ -151,7 +155,10 @@ You MUST return a JSON object with the following fields:
 }`;
 
     console.log("🤖 [OpenRouter Gemini 2.5 Flash] Querying Gemini model for interactive-chat...");
-    const rawContent = await callGemini([{ role: "user", content: geminiPrompt }], { responseFormat: "json_object" });
+    const rawContent = await callGemini([{ role: "user", content: geminiPrompt }], { 
+      responseFormat: "json_object",
+      useDeepseekPrimary: developMode
+    });
     const parsedData = safeJsonParse(rawContent);
     console.log("✅ [OpenRouter Gemini 2.5 Flash] Response parsed:", parsedData);
 

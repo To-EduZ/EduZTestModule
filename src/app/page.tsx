@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { Sparkles, BarChart3, Mic, Upload } from "lucide-react";
+import { Sparkles, BarChart3, Mic, Upload, Settings } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 
 export default function Dashboard() {
@@ -15,12 +15,18 @@ export default function Dashboard() {
   ];
 
   const [selectedVoice, setSelectedVoice] = useState<string>("en-US-AriaNeural");
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [devModeEnabled, setDevModeEnabled] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("preferred_accent_voice");
       if (saved) {
         setSelectedVoice(saved);
+      }
+      const savedDevMode = localStorage.getItem("dev_mode_enabled");
+      if (savedDevMode === "true") {
+        setDevModeEnabled(true);
       }
     }
   }, []);
@@ -175,6 +181,76 @@ export default function Dashboard() {
         </div>
 
       </main>
+
+      {/* Hidden Settings Button (low opacity, bottom right) */}
+      <button 
+        type="button"
+        onClick={() => setIsSettingsOpen(true)}
+        className="fixed bottom-4 right-4 text-slate-400/20 hover:text-slate-400 hover:scale-110 transition-all duration-300 z-50 cursor-pointer p-2 rounded-full"
+        title="Settings"
+      >
+        <Settings className="w-5 h-5" />
+      </button>
+
+      {/* Settings Modal */}
+      {isSettingsOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
+          onClick={() => setIsSettingsOpen(false)}
+        >
+          <div 
+            className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-md"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-lg font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                <span>Cấu Hình Hệ Thống</span>
+                <span className="bg-amber-100 dark:bg-amber-955 text-amber-600 dark:text-amber-400 text-[10px] px-2 py-0.5 rounded font-mono font-black uppercase">DEV</span>
+              </h3>
+              <button 
+                type="button"
+                onClick={() => setIsSettingsOpen(false)}
+                className="text-slate-450 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 font-extrabold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-6 text-left">
+              <div>
+                <p className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">Chế Độ Phát Triển (Develop Mode)</p>
+                <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-955/20 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+                  <div>
+                    <h4 className="text-sm font-extrabold text-slate-705 dark:text-slate-200 mb-0.5">Sử dụng DeepSeek API</h4>
+                    <p className="text-xs text-slate-450 dark:text-slate-500 font-bold">DeepSeek Chat làm chính, Gemini làm dự phòng.</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer select-none shrink-0 ml-4">
+                    <input 
+                      type="checkbox" 
+                      checked={devModeEnabled}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setDevModeEnabled(checked);
+                        localStorage.setItem("dev_mode_enabled", checked ? "true" : "false");
+                      }}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-slate-200 dark:bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsSettingsOpen(false)}
+              className="mt-6 w-full bg-indigo-600 hover:bg-indigo-750 text-white rounded-2xl py-3 font-extrabold text-sm tracking-wider uppercase cursor-pointer transition-all duration-200 border-b-4 border-indigo-800"
+            >
+              Lưu & Đóng
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

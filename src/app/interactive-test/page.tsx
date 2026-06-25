@@ -378,7 +378,10 @@ export default function InteractiveTest() {
   const startTest = async () => {
     setIsGenerating(true);
     try {
-      const res = await fetch("/api/interactive-test/generate");
+      const isDevMode = typeof window !== "undefined" && localStorage.getItem("dev_mode_enabled") === "true";
+      const res = await fetch("/api/interactive-test/generate", {
+        headers: isDevMode ? { "x-develop-mode": "true" } : {},
+      });
       const data = await res.json();
       if (data.success) {
         // Shorten the test by slicing to max 2 questions per picture
@@ -619,8 +622,10 @@ export default function InteractiveTest() {
         }));
       }
 
+      const isDevMode = typeof window !== "undefined" && localStorage.getItem("dev_mode_enabled") === "true";
       const res = await fetch("/api/interactive-chat", {
         method: "POST",
+        headers: isDevMode ? { "x-develop-mode": "true" } : {},
         body: formData,
       });
 
@@ -672,8 +677,10 @@ export default function InteractiveTest() {
           setReadingAccuracyState(data.readingAccuracy || 85);
         }
 
-        // 6. Handle automatic stage transitions
-        if (stage === "picture" && !data.stageComplete) {
+        // 6. Handle automatic stage transitions with client-side out-of-bounds safety check
+        const isStageOver = data.stageComplete || (stage === "picture" && currentQuestion && typeof data.nextSubQuestionIndex === "number" && data.nextSubQuestionIndex >= (currentQuestion.questions?.length || 2));
+
+        if (stage === "picture" && !isStageOver) {
           if (typeof data.nextSubQuestionIndex === "number") {
             if (data.nextSubQuestionIndex === subQuestionIndex) {
               setAttemptsCount(prev => prev + 1);
@@ -687,7 +694,7 @@ export default function InteractiveTest() {
           }
         }
 
-        if (data.stageComplete) {
+        if (isStageOver) {
           if (stage === "warmup") {
             setIsTransitioningStage(true);
             setTimeout(() => setStage("picture"), 2500);
