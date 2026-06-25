@@ -72,11 +72,13 @@ The child's response: "${transcribedText}".
 Number of AI messages sent in warmup so far: ${aiMessageCount}.
 
 Follow this exact flow:
-1. If number of AI messages sent so far is 0: Greet the child warmly, comment on their name, and ask: "How old are you?"
+1. If number of AI messages sent so far is 0: Ask the child: "Hello! Welcome to the English test. What's your name?"
    Set "stageComplete" to false.
-2. If number of AI messages sent so far is 1: Praise the child's age, and ask: "What is your favorite animal?"
+2. If number of AI messages sent so far is 1 (the child just answered their name): Greet the child warmly, comment on their name "${transcribedText}", and ask: "How old are you?"
    Set "stageComplete" to false.
-3. If number of AI messages sent so far is 2 or more: Praise the child's favorite animal, and complete Warm-up by returning EXACTLY this sentence in "aiResponse": "Great job! Let's look at a picture now."
+3. If number of AI messages sent so far is 2 (the child just answered their age): Praise the child's age, and ask: "What is your favorite animal?"
+   Set "stageComplete" to false.
+4. If number of AI messages sent so far is 3 or more (the child just answered their favorite animal): Praise the child's favorite animal, and complete Warm-up by returning EXACTLY this sentence in "aiResponse": "Great job! Let's look at a picture now."
    Set "stageComplete" to true.`;
     } else if (stage === "picture") {
       const pictureIndex = context.pictureIndex || 0;

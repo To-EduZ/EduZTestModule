@@ -250,6 +250,8 @@ export default function InteractiveTest() {
   const audioChunksRef = useRef<Blob[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const pendingTransitionRef = useRef<(() => void) | null>(null);
+  const transitionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Ref callback to avoid stale closure issues
   const handleAudioSubmissionRef = useRef<any>(null);
@@ -340,6 +342,13 @@ export default function InteractiveTest() {
       const handleEnded = () => {
         setIsTtsSpeaking(false);
         console.log("🔊 TTS Audio finished playing.");
+
+        if (pendingTransitionRef.current) {
+          console.log("⏭️ Executing pending transition after audio ended.");
+          pendingTransitionRef.current();
+          return;
+        }
+
         if (isTransitioningStage) {
           console.log("⏭️ Skipping mic activation during stage/picture transition.");
           return;
@@ -365,6 +374,9 @@ export default function InteractiveTest() {
         audioEl.removeEventListener("play", handlePlay);
         audioEl.removeEventListener("pause", handlePause);
         audioEl.removeEventListener("ended", handleEnded);
+        if (transitionTimeoutRef.current) {
+          clearTimeout(transitionTimeoutRef.current);
+        }
       };
     }
   }, [stage, isRealtimeMode, autoActivateMic, isProcessing, isRecording, showMcq, isTransitioningStage]);
@@ -373,6 +385,36 @@ export default function InteractiveTest() {
     const newMessage: Message = { id: Date.now().toString(), role: "ai", content, stage };
     setMessages((prev) => [...prev, newMessage]);
     playTTS(content);
+  };
+
+  const runTransitionAfterSpeech = (transitionFn: () => void, textToSpeak: string) => {
+    if (transitionTimeoutRef.current) {
+      clearTimeout(transitionTimeoutRef.current);
+      transitionTimeoutRef.current = null;
+    }
+
+    setIsTransitioningStage(true);
+
+    const executeTransition = () => {
+      if (transitionTimeoutRef.current) {
+        clearTimeout(transitionTimeoutRef.current);
+        transitionTimeoutRef.current = null;
+      }
+      pendingTransitionRef.current = null;
+      transitionFn();
+    };
+
+    pendingTransitionRef.current = executeTransition;
+
+    const cleanText = textToSpeak.replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, '');
+    const wordCount = cleanText.split(/\s+/).filter(Boolean).length;
+    const fallbackDelay = Math.max(3500, Math.min(wordCount * 450 + 1800, 9500));
+
+    console.log(`⏱️ Queuing transition with fallback timeout of ${fallbackDelay}ms for text: "${cleanText}"`);
+    transitionTimeoutRef.current = setTimeout(() => {
+      console.log("⏰ Fallback transition timeout triggered.");
+      executeTransition();
+    }, fallbackDelay);
   };
 
   const startTest = async () => {
@@ -696,13 +738,13 @@ export default function InteractiveTest() {
 
         if (isStageOver) {
           if (stage === "warmup") {
-            setIsTransitioningStage(true);
-            setTimeout(() => setStage("picture"), 2500);
+            runTransitionAfterSpeech(() => {
+              setStage("picture");
+            }, data.aiResponse);
           } else if (stage === "picture") {
             // Handle sequential 2-picture logic
             if (pictureIndex === 0) {
-              setIsTransitioningStage(true);
-              setTimeout(() => {
+              runTransitionAfterSpeech(() => {
                 setKeywordsHitPic1(keywordsMentioned.length);
                 setTotalProbingTurns(prev => prev + probingTurnsCount);
                 setPictureIndex(1);
@@ -718,17 +760,18 @@ export default function InteractiveTest() {
                 setProbingTurnsCount(0);
                 setSubQuestionIndex(0);
                 setIsProcessing(false);
-              }, 2500);
+              }, data.aiResponse);
             } else {
-              setIsTransitioningStage(true);
-              setTimeout(() => {
+              runTransitionAfterSpeech(() => {
                 setTotalProbingTurns(prev => prev + probingTurnsCount);
                 setStage("reading");
-              }, 2500);
+              }, data.aiResponse);
             }
           } else if (stage === "reading") {
             // After reading aloud story, transition to the MCQ panel after a short delay
-            setTimeout(() => setShowMcq(true), 2500);
+            runTransitionAfterSpeech(() => {
+              setShowMcq(true);
+            }, data.aiResponse);
           }
         }
       } else {
@@ -751,17 +794,14 @@ export default function InteractiveTest() {
     const correct = optionIndex === activeMcq.correctIndex;
     setIsMcqCorrect(correct);
 
-    if (correct) {
-      playTTS("Perfect! You got it right! Let's do some spelling now!");
-      setTimeout(() => {
-        setStage("writing");
-      }, 3500);
-    } else {
-      playTTS(`Good try! Max actually loves ${activeMcq.options[activeMcq.correctIndex]}. Let's do some spelling now!`);
-      setTimeout(() => {
-        setStage("writing");
-      }, 4500);
-    }
+    const feedbackText = correct
+      ? "Perfect! You got it right! Let's do some spelling now!"
+      : `Good try! Max actually loves ${activeMcq.options[activeMcq.correctIndex]}. Let's do some spelling now!`;
+
+    playTTS(feedbackText);
+    runTransitionAfterSpeech(() => {
+      setStage("writing");
+    }, feedbackText);
   };
 
   // Letter tile tap handlers
@@ -882,18 +922,16 @@ export default function InteractiveTest() {
       setSpellingCorrect1(isCorrect);
       setWritingSubmitted(true);
       
-      if (isCorrect) {
-        playTTS("Perfect! That's correct spelling! Next word!");
-      } else {
-        playTTS("Good try! Let's try spelling the next word!");
-      }
-
-      setTimeout(() => {
+      const feedbackText = isCorrect
+        ? "Perfect! That's correct spelling! Next word!"
+        : "Good try! Let's try spelling the next word!";
+      
+      playTTS(feedbackText);
+      runTransitionAfterSpeech(() => {
         setTypedWord("");
         setWritingSubmitted(false);
         setWritingTaskIndex(1);
-        // Letter tiles will be re-initialized by the useEffect
-      }, 2500);
+      }, feedbackText);
       
     } else {
       // Save Task 2 result

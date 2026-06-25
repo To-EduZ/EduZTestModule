@@ -13,7 +13,7 @@ import OpenAI from "openai";
 // ─── OpenAI-compatible Gemini client factory for OpenRouter ──────────────────
 
 function isOpenRouterKey(apiKey: string): boolean {
-  return apiKey.startsWith("sk-or-");
+  return apiKey.startsWith("sk-or-") || (!!process.env.OPENROUTER_API_KEY && apiKey === process.env.OPENROUTER_API_KEY);
 }
 
 function createGeminiClient(apiKey: string): OpenAI {
@@ -126,18 +126,24 @@ export async function callGemini(
   try {
     return await makeRequest(primaryKey, primaryModel);
   } catch (primaryErr: any) {
+    console.error(
+      `❌ [GeminiClient] Primary model ${primaryModel} failed:`,
+      primaryErr?.message || primaryErr
+    );
+
     const isRetryable =
+      useDeepseekPrimary ||
       primaryErr?.status === 429 ||
       primaryErr?.status === 500 ||
       primaryErr?.status === 503 ||
       (typeof primaryErr?.message === "string" &&
-        primaryErr.message.includes("rate limit"));
+        (primaryErr.message.includes("rate limit") || primaryErr.message.includes("empty")));
 
     if (isRetryable) {
       // 2. Try primary key with fallback model (if OpenRouter and models differ)
       if (isOpenRouterKey(primaryKey) && fallbackModel !== primaryModel) {
         console.warn(
-          `⚠️ [GeminiClient] Primary key with ${primaryModel} failed (${primaryErr?.status ?? primaryErr?.message}). Retrying with fallback model ${fallbackModel}...`
+          `⚠️ [GeminiClient] Primary key with ${primaryModel} failed. Retrying with fallback model ${fallbackModel}...`
         );
         try {
           return await makeRequest(primaryKey, fallbackModel);
@@ -149,7 +155,7 @@ export async function callGemini(
         }
       }
 
-      // 3. Try backup key if available and error is retryable
+      // 3. Try backup key if available
       if (backupKey && backupKey !== "your_backup_gemini_api_key_here") {
         const backupModel = isOpenRouterKey(backupKey) ? "google/gemini-2.5-flash" : "gemini-2.5-flash";
         const backupFallback = isOpenRouterKey(backupKey) ? "deepseek/deepseek-v4-flash" : "gemini-2.5-flash";
@@ -171,19 +177,18 @@ export async function callGemini(
                 "❌ [GeminiClient] Backup key and fallback model also failed:",
                 backupFallbackErr?.message
               );
-              throw backupFallbackErr;
             }
+          } else {
+            console.error(
+              "❌ [GeminiClient] Backup key failed:",
+              backupErr?.message
+            );
           }
-          console.error(
-            "❌ [GeminiClient] Backup key failed:",
-            backupErr?.message
-          );
-          throw backupErr;
         }
       }
     }
 
-    // Non-retryable or no backup key — rethrow
+    // Rethrow primary error if fallback also failed
     throw primaryErr;
   }
 }
