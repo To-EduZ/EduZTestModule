@@ -151,17 +151,6 @@ export default function InteractiveTest() {
   const recognitionRef = useRef<any>(null);
   const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const realtimeTranscriptRef = useRef("");
-  const transitionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const mainScrollContainerRef = useRef<HTMLDivElement>(null);
-
-  // Scroll to top of the main container when stage changes
-  useEffect(() => {
-    if (mainScrollContainerRef.current) {
-      mainScrollContainerRef.current.scrollTo({ top: 0, behavior: "smooth" });
-    }
-  }, [stage, pictureIndex]); // Cuộn lên đầu khi qua bài hoặc đổi ảnh
-
-  const handleAudioSubmissionRef = useRef<any>(null);
   const hesitationTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const voices = [
@@ -288,6 +277,14 @@ export default function InteractiveTest() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const pendingTransitionRef = useRef<(() => void) | null>(null);
   const transitionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const mainScrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Scroll to top of the main container when stage changes
+  useEffect(() => {
+    if (mainScrollContainerRef.current) {
+      mainScrollContainerRef.current.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }, [stage, pictureIndex]); // Cuộn lên đầu khi qua bài hoặc đổi ảnh
 
   // Ref callback to avoid stale closure issues
   const handleAudioSubmissionRef = useRef<any>(null);
