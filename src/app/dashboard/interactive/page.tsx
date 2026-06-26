@@ -4,8 +4,12 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { 
   ArrowLeft, Home, Search, Calendar, User, Star, Award, 
-  MessageSquare, Clock, Loader2, Sparkles, ChevronRight, BarChart3
+  MessageSquare, Clock, Loader2, Sparkles, ChevronRight, BarChart3, Download, FileText, Share2
 } from "lucide-react";
+import { toPng, toBlob } from "html-to-image";
+import jsPDF from "jspdf";
+import { useRef } from "react";
+import AnalyticsFilterBar from "@/components/AnalyticsFilterBar";
 
 interface InteractiveSession {
   _id: string;
@@ -26,6 +30,10 @@ interface InteractiveSession {
   studentStars: number | null;
   overallLevel: string;
   createdAt: string;
+  updatedAt: string;
+  school?: string;
+  className?: string;
+  phone?: string;
 }
 
 interface SummaryStats {
@@ -42,14 +50,134 @@ export default function InteractiveDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedSession, setSelectedSession] = useState<InteractiveSession | null>(null);
+  const resultsRef = useRef<HTMLDivElement>(null);
 
-  const fetchSessions = async (currentSearch = "") => {
+  // Filters State
+  const [schools, setSchools] = useState<string[]>([]);
+  const [classes, setClasses] = useState<string[]>([]);
+  const [selectedSchool, setSelectedSchool] = useState("");
+  const [selectedClass, setSelectedClass] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [isApplying, setIsApplying] = useState(false);
+
+  const withExpandedChat = async (callback: () => Promise<void>) => {
+    const chatContainer = document.getElementById("chat-history-container");
+    const origMaxHeight = chatContainer?.style.maxHeight;
+    const origOverflow = chatContainer?.style.overflow;
+    
+    const wrapper = resultsRef.current;
+    const origWrapperOverflow = wrapper?.style.overflow;
+    const origWrapperHeight = wrapper?.style.height;
+    
+    if (chatContainer) {
+      chatContainer.style.maxHeight = 'none';
+      chatContainer.style.overflow = 'visible';
+    }
+    
+    if (wrapper) {
+      wrapper.style.overflow = 'visible';
+      wrapper.style.height = 'max-content';
+    }
+    
+    // Wait a tick for DOM layout update
+    await new Promise(r => setTimeout(r, 150));
+    
     try {
-      setIsLoading(true);
-      const url = new URL("/api/interactive-sessions", window.location.origin);
-      if (currentSearch) {
-        url.searchParams.append("search", currentSearch);
+      await callback();
+    } finally {
+      if (chatContainer) {
+        chatContainer.style.maxHeight = origMaxHeight || '';
+        chatContainer.style.overflow = origOverflow || '';
       }
+      if (wrapper) {
+        wrapper.style.overflow = origWrapperOverflow || '';
+        wrapper.style.height = origWrapperHeight || '';
+      }
+    }
+  };
+
+  const exportToImage = async () => {
+    if (!resultsRef.current || !selectedSession) return;
+    await withExpandedChat(async () => {
+      try {
+        const dataUrl = await toPng(resultsRef.current!, { cacheBust: true, pixelRatio: 2 });
+        const link = document.createElement("a");
+        link.href = dataUrl;
+        link.download = `Chi_Tiet_Test_${selectedSession.kidName}_${new Date().getTime()}.png`;
+        link.click();
+      } catch (err) {
+        console.error("Lỗi xuất ảnh:", err);
+      }
+    });
+  };
+
+  const exportToPDF = async () => {
+    if (!resultsRef.current || !selectedSession) return;
+    await withExpandedChat(async () => {
+      try {
+        const dataUrl = await toPng(resultsRef.current!, { cacheBust: true, pixelRatio: 2 });
+        const pdf = new jsPDF("p", "mm", "a4");
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (resultsRef.current!.offsetHeight * pdfWidth) / resultsRef.current!.offsetWidth;
+        
+        pdf.addImage(dataUrl, "PNG", 0, 0, pdfWidth, pdfHeight);
+        pdf.save(`Chi_Tiet_Test_${selectedSession.kidName}_${new Date().getTime()}.pdf`);
+      } catch (err) {
+        console.error("Lỗi xuất PDF:", err);
+      }
+    });
+  };
+
+  const shareToZalo = async () => {
+    if (!resultsRef.current || !selectedSession) return;
+    await withExpandedChat(async () => {
+      try {
+        const blob = await toBlob(resultsRef.current!, { cacheBust: true, pixelRatio: 2 });
+        if (!blob) return;
+        const file = new File([blob], `Ket_Qua_Test_${selectedSession.kidName}.png`, { type: "image/png" });
+        
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+          try {
+            await navigator.share({
+              title: 'Kết quả bài kiểm tra',
+              text: `Xem kết quả bài kiểm tra tiếng Anh của bé ${selectedSession.kidName}!`,
+              files: [file]
+            });
+            return;
+          } catch (err) {
+            console.log("Share cancelled or failed", err);
+          }
+        }
+        
+        try {
+          await navigator.clipboard.write([
+            new ClipboardItem({
+              [blob.type]: blob
+            })
+          ]);
+          alert("Đã sao chép ảnh kết quả! Bạn có thể dán (Ctrl+V) trực tiếp vào đoạn chat Zalo.");
+        } catch (clipboardErr) {
+          console.error("Clipboard error", clipboardErr);
+          alert("Trình duyệt không hỗ trợ chia sẻ trực tiếp. Vui lòng 'Tải Ảnh' và gửi qua Zalo.");
+        }
+      } catch (err) {
+        console.error("Lỗi tạo ảnh chia sẻ:", err);
+      }
+    });
+  };
+
+  const fetchSessions = async (currentSearch = searchTerm) => {
+    try {
+      setIsApplying(true);
+      if (sessions.length === 0) setIsLoading(true);
+      const url = new URL("/api/interactive-sessions", window.location.origin);
+      if (currentSearch) url.searchParams.append("search", currentSearch);
+      if (selectedSchool) url.searchParams.append("school", selectedSchool);
+      if (selectedClass) url.searchParams.append("className", selectedClass);
+      if (startDate) url.searchParams.append("from", startDate);
+      if (endDate) url.searchParams.append("to", endDate);
+      
       const res = await fetch(url.toString());
       const data = await res.json();
       if (data.success) {
@@ -60,16 +188,63 @@ export default function InteractiveDashboard() {
       console.error("Lỗi lấy danh sách phiên làm bài:", e);
     } finally {
       setIsLoading(false);
+      setIsApplying(false);
+    }
+  };
+
+  const fetchConfig = async () => {
+    try {
+      const res = await fetch("/api/app-config");
+      const data = await res.json();
+      if (data.success) {
+        setSchools(data.data.schools || []);
+        setClasses(data.data.classes || []);
+      }
+    } catch (error) {
+      console.error("Lỗi lấy config:", error);
     }
   };
 
   useEffect(() => {
+    fetchConfig();
     fetchSessions();
   }, []);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     fetchSessions(searchTerm);
+  };
+
+  const handleExportExcel = async () => {
+    if (sessions.length === 0) return;
+    try {
+      const XLSX = await import("xlsx");
+      const exportData = sessions.map((s, index) => {
+        const overallScore = getOverallAvgScore(s.scores);
+        return {
+          "STT": index + 1,
+          "Tên Học Viên": s.kidName,
+          "Tuổi": s.kidAge,
+          "Trường": s.school || "Chưa cập nhật",
+          "Lớp": s.className || "Chưa cập nhật",
+          "SĐT": s.phone || "Chưa cập nhật",
+          "Ngày Thi": formatDate(s.createdAt),
+          "Trình độ đánh giá": s.overallLevel,
+          "Nghe": s.scores.listening,
+          "Nói": s.scores.speaking,
+          "Đọc": s.scores.reading,
+          "Viết": s.scores.writing,
+          "Điểm Trung Bình": overallScore,
+          "Mức độ hài lòng": s.studentStars ? `${s.studentStars} Sao` : "Chưa đánh giá"
+        };
+      });
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Lich_Su_Hoi_Thoai_AI");
+      XLSX.writeFile(workbook, `Bao_Cao_Hoi_Thoai_AI_${new Date().toISOString().split("T")[0]}.xlsx`);
+    } catch (error) {
+      console.error("Lỗi khi xuất Excel:", error);
+    }
   };
 
   const getOverallAvgScore = (scores: InteractiveSession["scores"]) => {
@@ -113,12 +288,29 @@ export default function InteractiveDashboard() {
               Xem chi tiết trải nghiệm hội thoại, điểm số 4 kỹ năng và đánh giá sao từ các học sinh.
             </p>
           </div>
-          <Link href="/dashboard">
-            <button className="flex items-center gap-1.5 btn-3d-gray px-5 py-2.5 text-xs font-black">
-              <ArrowLeft className="w-4 h-4" /> Quay lại Dashboard
-            </button>
+          <Link 
+            href="/dashboard"
+            className="px-5 py-2.5 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl flex items-center gap-2 transition-colors shadow-sm"
+          >
+            <ArrowLeft className="w-4 h-4" /> Quay lại Dashboard
           </Link>
         </div>
+
+        {/* Filters */}
+        <AnalyticsFilterBar
+          schools={schools}
+          classes={classes}
+          selectedSchool={selectedSchool}
+          selectedClass={selectedClass}
+          startDate={startDate}
+          endDate={endDate}
+          onSchoolChange={setSelectedSchool}
+          onClassChange={setSelectedClass}
+          onStartDateChange={setStartDate}
+          onEndDateChange={setEndDate}
+          onApply={() => fetchSessions()}
+          isApplying={isApplying}
+        />
 
         {/* Stats Grid */}
         {stats && (
@@ -184,8 +376,8 @@ export default function InteractiveDashboard() {
         )}
 
         {/* Search Bar Form */}
-        <div className="flex items-center gap-4">
-          <form onSubmit={handleSearchSubmit} className="flex-1 flex gap-2.5 max-w-md">
+        <div className="flex flex-col md:flex-row items-center gap-4 justify-between">
+          <form onSubmit={handleSearchSubmit} className="w-full md:w-auto flex-1 flex gap-2.5 max-w-md">
             <div className="relative flex-1">
               <Search className="w-5 h-5 text-slate-400 absolute left-3.5 top-1/2 transform -translate-y-1/2" />
               <input
@@ -200,6 +392,14 @@ export default function InteractiveDashboard() {
               Tìm kiếm
             </button>
           </form>
+          
+          <button 
+            onClick={handleExportExcel}
+            className="px-5 py-2.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 font-bold rounded-full flex justify-center items-center gap-2 transition-all shadow-sm shrink-0 border border-emerald-200 dark:border-emerald-800"
+            title="Xuất Báo Cáo Excel"
+          >
+            <Download className="w-4 h-4" /> Xuất Excel
+          </button>
         </div>
 
         {/* Sessions Table Layout */}
@@ -319,7 +519,7 @@ export default function InteractiveDashboard() {
             </div>
 
             {/* Drawer Scrollable Content */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-white dark:bg-slate-900" ref={resultsRef}>
               
               {/* Star Rating & YLE Certificate Level Display */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -411,7 +611,7 @@ export default function InteractiveDashboard() {
                   <MessageSquare className="w-4 h-4 text-sky-500" /> Nhật ký hội thoại AI chi tiết
                 </h3>
 
-                <div className="bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 max-h-96 overflow-y-auto space-y-4 font-sans text-xs">
+                <div id="chat-history-container" className="bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 max-h-96 overflow-y-auto space-y-4 font-sans text-xs">
                   {selectedSession.chatHistory.length === 0 ? (
                     <p className="text-center italic text-slate-400 py-10">Không ghi nhận được đoạn chat nào.</p>
                   ) : (
@@ -436,7 +636,27 @@ export default function InteractiveDashboard() {
             </div>
 
             {/* Drawer Footer */}
-            <div className="p-6 border-t border-slate-100 dark:border-slate-850 shrink-0">
+            <div className="p-6 border-t border-slate-100 dark:border-slate-850 shrink-0 flex flex-col gap-3">
+              <div className="flex gap-3">
+                <button
+                  onClick={exportToImage}
+                  className="flex-1 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-400 text-xs font-black py-3 rounded-2xl flex justify-center items-center gap-1.5 transition-colors"
+                >
+                  <Download className="w-4 h-4" /> Tải Ảnh
+                </button>
+                <button
+                  onClick={exportToPDF}
+                  className="flex-1 bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/30 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-400 text-xs font-black py-3 rounded-2xl flex justify-center items-center gap-1.5 transition-colors"
+                >
+                  <FileText className="w-4 h-4" /> Xuất PDF
+                </button>
+                <button
+                  onClick={shareToZalo}
+                  className="flex-1 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-400 text-xs font-black py-3 rounded-2xl flex justify-center items-center gap-1.5 transition-colors"
+                >
+                  <Share2 className="w-4 h-4" /> Gửi Zalo
+                </button>
+              </div>
               <button
                 onClick={() => setSelectedSession(null)}
                 className="w-full bg-slate-100 hover:bg-slate-250 dark:bg-slate-850 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-350 text-xs font-black py-3 rounded-2xl cursor-pointer"

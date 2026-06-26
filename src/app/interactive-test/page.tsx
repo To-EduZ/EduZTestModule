@@ -4,11 +4,13 @@ import React, { useState, useEffect, useRef } from "react";
 import { 
   Mic, Square, Loader2, PlayCircle, Send, Image as ImageIcon,
   Star, Award, Sparkles, Volume2, BookOpen, PenTool, CheckCircle2, 
-  XCircle, ChevronRight, Home, ArrowRight, Trophy, Shield, RefreshCw, Compass, RotateCcw
+  XCircle, ChevronRight, Home, ArrowRight, Trophy, Shield, RefreshCw, Compass, RotateCcw, Download, FileText, Share2
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import DevelopmentRadarChart from "@/components/DevelopmentRadarChart";
+import { toPng, toBlob } from "html-to-image";
+import jsPDF from "jspdf";
 
 // Shuffle helper (Fisher-Yates)
 function shuffleArray<T>(arr: T[]): T[] {
@@ -137,6 +139,7 @@ export default function InteractiveTest() {
   // Develop Mode Simulation Mock Inputs
   const [isDevModeEnabled, setIsDevModeEnabled] = useState(false);
   const [devInputText, setDevInputText] = useState("");
+  const resultsRef = useRef<HTMLDivElement>(null);
 
   // Real-time and Child-friendly states (simplified: always real-time, always auto-mic)
   const isRealtimeMode = true;
@@ -1041,7 +1044,7 @@ export default function InteractiveTest() {
           scores: computedScores,
           chatHistory: transcriptToSave,
           overallLevel: overallLevelStr,
-          userId: `kid_entrance_${Date.now()}`
+          userId: localStorage.getItem("eduz_user_id") || `kid_entrance_${Date.now()}`
         })
       });
       const data = await res.json();
@@ -1198,6 +1201,75 @@ export default function InteractiveTest() {
   }
 
   // 1. Intro view
+  const exportToImage = async () => {
+    if (resultsRef.current) {
+      try {
+        const dataUrl = await toPng(resultsRef.current, { cacheBust: true, pixelRatio: 2 });
+        const link = document.createElement("a");
+        link.href = dataUrl;
+        link.download = `Ket_Qua_Test_${kidName}_${new Date().getTime()}.png`;
+        link.click();
+      } catch (err) {
+        console.error("Lỗi xuất ảnh:", err);
+      }
+    }
+  };
+
+  const exportToPDF = async () => {
+    if (resultsRef.current) {
+      try {
+        const dataUrl = await toPng(resultsRef.current, { cacheBust: true, pixelRatio: 2 });
+        const pdf = new jsPDF("p", "mm", "a4");
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (resultsRef.current.offsetHeight * pdfWidth) / resultsRef.current.offsetWidth;
+        
+        pdf.addImage(dataUrl, "PNG", 0, 0, pdfWidth, pdfHeight);
+        pdf.save(`Ket_Qua_Test_${kidName}_${new Date().getTime()}.pdf`);
+      } catch (err) {
+        console.error("Lỗi xuất PDF:", err);
+      }
+    }
+  };
+
+  const shareToZalo = async () => {
+    if (resultsRef.current) {
+      try {
+        const blob = await toBlob(resultsRef.current, { cacheBust: true, pixelRatio: 2 });
+        if (!blob) return;
+        const file = new File([blob], `Ket_Qua_Test_${kidName}.png`, { type: "image/png" });
+        
+        // Try Web Share API (Mobile)
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+          try {
+            await navigator.share({
+              title: 'Kết quả bài kiểm tra',
+              text: `Xem kết quả bài kiểm tra tiếng Anh của bé ${kidName}!`,
+              files: [file]
+            });
+            return;
+          } catch (err) {
+            console.log("Share cancelled or failed", err);
+          }
+        }
+        
+        // Fallback to Clipboard (Desktop)
+        try {
+          await navigator.clipboard.write([
+            new ClipboardItem({
+              [blob.type]: blob
+            })
+          ]);
+          alert("Đã sao chép ảnh kết quả! Bạn có thể dán (Ctrl+V) trực tiếp vào đoạn chat Zalo.");
+        } catch (clipboardErr) {
+          console.error("Clipboard error", clipboardErr);
+          alert("Trình duyệt không hỗ trợ chia sẻ trực tiếp. Vui lòng 'Tải Ảnh Kết Quả' và gửi qua Zalo.");
+        }
+      } catch (err) {
+        console.error("Lỗi tạo ảnh chia sẻ:", err);
+      }
+    }
+  };
+
   if (stage === "intro") {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-dark-bg flex flex-col items-center justify-center p-4 relative overflow-hidden">
@@ -1312,8 +1384,21 @@ export default function InteractiveTest() {
             )}
           </section>
 
+          {/* Export & Share Buttons */}
+          <div className="flex flex-row justify-center flex-wrap gap-4 my-4">
+            <button onClick={exportToImage} className="flex items-center gap-2 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-4 py-2 rounded-xl font-bold transition-all shadow-sm">
+              <Download className="w-4 h-4" /> Tải Ảnh Kết Quả
+            </button>
+            <button onClick={exportToPDF} className="flex items-center gap-2 bg-rose-100 hover:bg-rose-200 text-rose-700 px-4 py-2 rounded-xl font-bold transition-all shadow-sm">
+              <FileText className="w-4 h-4" /> Xuất File PDF
+            </button>
+            <button onClick={shareToZalo} className="flex items-center gap-2 bg-blue-100 hover:bg-blue-200 text-blue-700 px-4 py-2 rounded-xl font-bold transition-all shadow-sm">
+              <Share2 className="w-4 h-4" /> Chia sẻ Zalo
+            </button>
+          </div>
+
           {/* Certificate Showcase Card */}
-          <section className="bg-white dark:bg-slate-900 rounded-3xl border-4 border-amber-300 dark:border-amber-800 p-5 md:p-8 shadow-xl text-center relative overflow-hidden">
+          <section ref={resultsRef} className="bg-white dark:bg-slate-900 rounded-3xl border-4 border-amber-300 dark:border-amber-800 p-5 md:p-8 shadow-xl text-center relative overflow-hidden">
             <div className="absolute top-2 left-6 text-2xl animate-bounce" style={{ animationDelay: "1s" }}>✨</div>
             <div className="absolute top-8 right-8 text-2xl animate-bounce" style={{ animationDelay: "2.5s" }}>🎈</div>
             

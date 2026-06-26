@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
+import mongoose from "mongoose";
 import InteractiveSession from "@/models/InteractiveSession";
+import User from "@/models/User";
 import { inMemoryInteractiveSessions } from "@/lib/dbStore";
 
 const DEFAULT_USER_ID = "kid_primary_std_01";
@@ -18,20 +20,34 @@ export async function POST(req: NextRequest) {
       userId,
     } = body;
 
-    // Validate required fields
-    if (!kidName || kidAge === undefined || !scores || !overallLevel) {
+    const { isFallback } = await connectToDatabase();
+
+    let finalKidName = kidName;
+    let finalKidAge = kidAge;
+
+    if (userId && !isFallback) {
+      try {
+        const userDoc = await User.findById(userId);
+        if (userDoc) {
+          if (!kidName || kidName === "Con") finalKidName = userDoc.name;
+          if (!kidAge) finalKidAge = userDoc.age;
+        }
+      } catch (e) {
+        console.warn("Could not fetch user by ID", e);
+      }
+    }
+
+    if (!finalKidName || finalKidAge === undefined || !scores || !overallLevel) {
       return NextResponse.json(
         { error: "Thiếu dữ liệu bắt buộc (Tên, Tuổi, Điểm số, Trình độ)!" },
         { status: 400 }
       );
     }
 
-    const { isFallback } = await connectToDatabase();
-
     const sessionData = {
       userId: userId || DEFAULT_USER_ID,
-      kidName,
-      kidAge: Number(kidAge),
+      kidName: finalKidName,
+      kidAge: Number(finalKidAge),
       scores: {
         speaking: Number(scores.speaking || 0),
         listening: Number(scores.listening || 0),
@@ -153,6 +169,10 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const search = searchParams.get("search") || "";
+    const schoolFilter = searchParams.get("school") || "";
+    const classFilter = searchParams.get("className") || "";
+    const fromDate = searchParams.get("from") || "";
+    const toDate = searchParams.get("to") || "";
     
     const { isFallback } = await connectToDatabase();
     let rawList: any[] = [];
@@ -164,6 +184,29 @@ export async function GET(req: NextRequest) {
           query = { kidName: { $regex: search, $options: "i" } };
         }
         rawList = await InteractiveSession.find(query).sort({ createdAt: -1 }).lean();
+        
+        // Lấy thông tin user để gán thêm trường học, lớp học
+        const userIds = rawList
+          .map(s => s.userId)
+          .filter(id => id && mongoose.isValidObjectId(id));
+          
+        if (userIds.length > 0) {
+          const users = await User.find({ _id: { $in: userIds } }).lean();
+          const userMap: Record<string, any> = {};
+          users.forEach((u: any) => {
+            userMap[u._id.toString()] = u;
+          });
+          
+          rawList = rawList.map(session => {
+            const user = userMap[session.userId as string];
+            return {
+              ...session,
+              school: user?.school || "Chưa cập nhật",
+              className: user?.className || "Chưa cập nhật",
+              phone: user?.phone || "Chưa cập nhật",
+            };
+          });
+        }
       } catch (dbError) {
         console.warn("⚠️ Trích xuất danh sách từ MongoDB lỗi, dùng bộ nhớ tạm.");
         rawList = [...inMemoryInteractiveSessions];
@@ -176,6 +219,21 @@ export async function GET(req: NextRequest) {
     if (isFallback && search) {
       const lowerSearch = search.toLowerCase();
       rawList = rawList.filter(item => (item.kidName || "").toLowerCase().includes(lowerSearch));
+    }
+
+    // Apply school, class, date filters
+    if (schoolFilter || classFilter || fromDate || toDate) {
+      rawList = rawList.filter(session => {
+        if (schoolFilter && session.school !== schoolFilter) return false;
+        if (classFilter && session.className !== classFilter) return false;
+        if (fromDate || toDate) {
+          const d = new Date(session.createdAt).getTime();
+          if (fromDate && d < new Date(fromDate).getTime()) return false;
+          // Add 86400000 (1 day) to include the end date fully
+          if (toDate && d > new Date(toDate).getTime() + 86400000) return false;
+        }
+        return true;
+      });
     }
 
     // Sort list by createdAt desc (newest first)

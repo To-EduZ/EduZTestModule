@@ -116,16 +116,24 @@ export default function AnalyticsFilterBar({
         {/* Apply Button */}
         <div className="w-full md:w-auto mt-4 md:mt-0">
           <button
-            onClick={onApply}
+            onClick={() => {
+              if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
+                alert("Khoảng thời gian không hợp lệ. 'Từ ngày' không thể lớn hơn 'Đến ngày'.");
+                return;
+              }
+              onApply();
+            }}
             disabled={isApplying}
             className="w-full md:w-auto flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-70 text-white rounded-xl px-6 py-2.5 font-bold transition-all shadow-sm shadow-indigo-200 dark:shadow-none"
           >
-            {isApplying ? (
-              <RefreshCw className="w-4 h-4 animate-spin" />
-            ) : (
-              <Filter className="w-4 h-4" />
-            )}
-            Lọc dữ liệu
+            <span className="flex items-center justify-center w-4 h-4">
+              {isApplying ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : (
+                <Filter className="w-4 h-4" />
+              )}
+            </span>
+            <span>Lọc dữ liệu</span>
           </button>
         </div>
       </div>

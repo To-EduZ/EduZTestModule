@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { ChevronRight, Home, PieChart, Users, TrendingUp, Target, Award, Search, Sparkles } from "lucide-react";
+import { ChevronRight, Home, PieChart, Users, TrendingUp, Target, Award, Search, Sparkles, Download } from "lucide-react";
 import AnalyticsFilterBar from "@/components/AnalyticsFilterBar";
 import BarChartSVG from "@/components/BarChartSVG";
 import LineChartSVG from "@/components/LineChartSVG";
@@ -200,6 +200,27 @@ export default function AnalyticsDashboard() {
     }
     await Promise.all(promises);
     setIsApplying(false);
+  };
+
+  const handleExportExcel = async () => {
+    if (studentsList.length === 0) return;
+    try {
+      const XLSX = await import("xlsx");
+      const exportData = studentsList.map((s, index) => ({
+        "STT": index + 1,
+        "Tên Học Viên": s.name,
+        "Trường": s.school,
+        "Lớp": s.className,
+        "Điểm số (TB)": s.score,
+        "Số bài test đã làm": s.testsTaken
+      }));
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Lich_Su_Kiem_Tra");
+      XLSX.writeFile(workbook, `Lich_Su_Kiem_Tra_${new Date().toISOString().split("T")[0]}.xlsx`);
+    } catch (error) {
+      console.error("Lỗi khi xuất Excel:", error);
+    }
   };
 
   useEffect(() => {
@@ -415,7 +436,16 @@ export default function AnalyticsDashboard() {
           {/* Left Column: Leaderboard / Student Selector */}
           <div className="bg-white dark:bg-slate-900/80 rounded-2xl border border-slate-200/60 dark:border-slate-800/80 shadow-sm transition-all hover:shadow-md overflow-hidden flex flex-col">
             <div className="p-5 border-b border-slate-100 dark:border-slate-800">
-              <h2 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Danh sách Học sinh & Xếp hạng</h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold text-slate-800 dark:text-white">Danh sách Học sinh & Xếp hạng</h2>
+                <button 
+                  onClick={handleExportExcel}
+                  className="p-2 bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 rounded-lg flex items-center justify-center transition-colors"
+                  title="Xuất Excel"
+                >
+                  <Download className="w-4 h-4" />
+                </button>
+              </div>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input

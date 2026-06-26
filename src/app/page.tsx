@@ -2,8 +2,9 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { Sparkles, BarChart3, Mic, Upload, Settings } from "lucide-react";
+import { Sparkles, BarChart3, Mic, Upload, Settings, UserPlus, Phone, Building, GraduationCap, X } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
+import { useRouter } from "next/navigation";
 
 export default function Dashboard() {
   const voices = [
@@ -17,6 +18,53 @@ export default function Dashboard() {
   const [selectedVoice, setSelectedVoice] = useState<string>("en-US-AriaNeural");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [devModeEnabled, setDevModeEnabled] = useState(false);
+  const router = useRouter();
+
+  // User Info Form State
+  const [isUserFormOpen, setIsUserFormOpen] = useState(false);
+  const [pendingTestRoute, setPendingTestRoute] = useState<string>("");
+  const [userInfo, setUserInfo] = useState({
+    name: "",
+    schoolName: "",
+    className: "",
+    age: "",
+    parentPhone: ""
+  });
+  const [isSubmittingUser, setIsSubmittingUser] = useState(false);
+
+  const handleStartTest = (route: string) => {
+    // Check if user info already exists (optional, but requirement says "luôn hiển thị")
+    // If the requirement is to ALWAYS show it, we don't check localStorage here.
+    // If we want to skip if they already filled it, we could check here.
+    // The prompt says "tôi muốn phần form hiển thị ngay khi người dùng bấm nút làm bài", so we show it every time.
+    setPendingTestRoute(route);
+    setIsUserFormOpen(true);
+  };
+
+  const handleUserFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmittingUser(true);
+    try {
+      const res = await fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(userInfo),
+      });
+      const data = await res.json();
+      if (data.success && data.userId) {
+        localStorage.setItem("eduz_user_id", data.userId);
+        setIsUserFormOpen(false);
+        router.push(pendingTestRoute);
+      } else {
+        alert(data.error || "Có lỗi xảy ra, vui lòng thử lại.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Không thể kết nối đến máy chủ.");
+    } finally {
+      setIsSubmittingUser(false);
+    }
+  };
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -148,12 +196,15 @@ export default function Dashboard() {
               </p>
             </div>
             
-            <Link href="/interactive-test" className="w-full relative z-10">
-              <button className="w-full bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white rounded-2xl px-6 py-4 font-black tracking-wider uppercase flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 transition-all shadow-lg hover:shadow-pink-500/20 text-sm cursor-pointer border-b-4 border-rose-700">
+            <div className="w-full relative z-10">
+              <button 
+                onClick={() => handleStartTest("/interactive-test")}
+                className="w-full bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white rounded-2xl px-6 py-4 font-black tracking-wider uppercase flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 transition-all shadow-lg hover:shadow-pink-500/20 text-sm cursor-pointer border-b-4 border-rose-700"
+              >
                 <Mic className="w-4 h-4 animate-pulse" />
                 Mở Module Tương Tác
               </button>
-            </Link>
+            </div>
           </section>
 
           {/* Cambridge YLE Test */}
@@ -171,12 +222,15 @@ export default function Dashboard() {
               </p>
             </div>
             
-            <Link href="/cambridge-test" className="w-full relative z-10">
-              <button className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white rounded-2xl px-6 py-4 font-black tracking-wider uppercase flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 transition-all shadow-lg hover:shadow-amber-500/20 text-sm cursor-pointer border-b-4 border-orange-800">
+            <div className="w-full relative z-10">
+              <button 
+                onClick={() => handleStartTest("/cambridge-test")}
+                className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white rounded-2xl px-6 py-4 font-black tracking-wider uppercase flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 transition-all shadow-lg hover:shadow-amber-500/20 text-sm cursor-pointer border-b-4 border-orange-800"
+              >
                 <BarChart3 className="w-4 h-4 animate-pulse" />
                 Mở Bài Test Cambridge
               </button>
-            </Link>
+            </div>
           </section>
         </div>
 
@@ -248,6 +302,141 @@ export default function Dashboard() {
             >
               Lưu & Đóng
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* User Info Form Modal */}
+      {isUserFormOpen && (
+        <div 
+          className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4 backdrop-blur-md"
+          onClick={() => !isSubmittingUser && setIsUserFormOpen(false)}
+        >
+          <div 
+            className="bg-white dark:bg-slate-900 rounded-[2rem] p-6 shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-md transform transition-all"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                <span className="bg-indigo-100 text-indigo-600 p-2 rounded-xl dark:bg-indigo-900/50 dark:text-indigo-400">
+                  <UserPlus className="w-5 h-5" />
+                </span>
+                Thông Tin Học Viên
+              </h3>
+              <button 
+                type="button"
+                onClick={() => !isSubmittingUser && setIsUserFormOpen(false)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-full transition-colors"
+                disabled={isSubmittingUser}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <p className="text-sm font-bold text-slate-500 dark:text-slate-400 mb-6 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
+              Phụ huynh vui lòng nhập thông tin để bé bắt đầu bài kiểm tra nhé! 🌟
+            </p>
+
+            <form onSubmit={handleUserFormSubmit} className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 ml-1">Tên của bé</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <UserPlus className="w-4 h-4" />
+                  </div>
+                  <input
+                    required
+                    type="text"
+                    value={userInfo.name}
+                    onChange={(e) => setUserInfo({ ...userInfo, name: e.target.value })}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-4 py-3 font-bold text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 transition-all"
+                    placeholder="VD: Nguyễn Văn A"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 ml-1">Tuổi</label>
+                  <input
+                    required
+                    type="number"
+                    min="4"
+                    max="18"
+                    value={userInfo.age}
+                    onChange={(e) => setUserInfo({ ...userInfo, age: e.target.value })}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 font-bold text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 transition-all"
+                    placeholder="VD: 8"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 ml-1">Lớp</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                      <GraduationCap className="w-4 h-4" />
+                    </div>
+                    <input
+                      required
+                      type="text"
+                      value={userInfo.className}
+                      onChange={(e) => setUserInfo({ ...userInfo, className: e.target.value })}
+                      className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-4 py-3 font-bold text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 transition-all"
+                      placeholder="VD: 3A1"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 ml-1">Trường học</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <Building className="w-4 h-4" />
+                  </div>
+                  <input
+                    required
+                    type="text"
+                    value={userInfo.schoolName}
+                    onChange={(e) => setUserInfo({ ...userInfo, schoolName: e.target.value })}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-4 py-3 font-bold text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 transition-all"
+                    placeholder="VD: TH Lê Quý Đôn"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 ml-1">SĐT Phụ Huynh</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <Phone className="w-4 h-4" />
+                  </div>
+                  <input
+                    required
+                    type="tel"
+                    pattern="[0-9]{10,11}"
+                    value={userInfo.parentPhone}
+                    onChange={(e) => setUserInfo({ ...userInfo, parentPhone: e.target.value })}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-4 py-3 font-bold text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 transition-all"
+                    placeholder="VD: 0912345678"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSubmittingUser}
+                className="w-full mt-6 bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700 text-white rounded-xl py-4 font-black tracking-wider uppercase flex items-center justify-center gap-2 transition-all shadow-lg hover:shadow-indigo-500/25 border-b-4 border-blue-800 disabled:opacity-70 disabled:cursor-not-allowed"
+              >
+                {isSubmittingUser ? (
+                  <>
+                    <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                    Đang xử lý...
+                  </>
+                ) : (
+                  <>Bắt Đầu Làm Bài 🚀</>
+                )}
+              </button>
+            </form>
           </div>
         </div>
       )}
