@@ -132,10 +132,10 @@ export async function callGemini(
   let fallbackModel = isOpenRouterKey(primaryKey) ? "deepseek/deepseek-v4-flash" : "gemini-2.5-flash";
 
   if (useAdaptiveModels) {
-    // Adaptive test models: xiaomi/mimo-v2.5 (primary) + deepseek/deepseek-v4-flash (fallback)
-    primaryModel = "xiaomi/mimo-v2.5";
-    fallbackModel = "deepseek/deepseek-v4-flash";
-    console.log("🧠 [GeminiClient] ADAPTIVE TEST MODE: Using xiaomi/mimo-v2.5 (primary) + deepseek/deepseek-v4-flash (fallback). Thinking/Reasoning DISABLED.");
+    // Adaptive test models: deepseek/deepseek-v4-flash (primary) + xiaomi/mimo-v2.5 (fallback)
+    primaryModel = "deepseek/deepseek-v4-flash";
+    fallbackModel = "xiaomi/mimo-v2.5";
+    console.log("🧠 [GeminiClient] ADAPTIVE TEST MODE: Using deepseek/deepseek-v4-flash (primary) + xiaomi/mimo-v2.5 (fallback). Thinking/Reasoning DISABLED.");
   } else if (useDeepseekPrimary) {
     primaryModel = "deepseek/deepseek-v4-flash";
     fallbackModel = isOpenRouterKey(primaryKey) ? "google/gemini-2.5-flash" : "gemini-2.5-flash";
