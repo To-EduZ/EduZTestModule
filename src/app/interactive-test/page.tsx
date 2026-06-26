@@ -140,7 +140,7 @@ export default function InteractiveTest() {
 
   // Real-time and Child-friendly states (simplified: always real-time, always auto-mic)
   const isRealtimeMode = true;
-  const autoActivateMic = true;
+  const autoActivateMic = false;
   const [realtimeTranscript, setRealtimeTranscript] = useState("");
   const [isSpeechSupported, setIsSpeechSupported] = useState(true);
   const [isTtsSpeaking, setIsTtsSpeaking] = useState(false);
@@ -1612,7 +1612,7 @@ export default function InteractiveTest() {
         <div className="absolute inset-4 bg-white dark:bg-slate-900 rounded-3xl border-4 border-slate-150 dark:border-slate-800 shadow-md p-4 md:p-6 overflow-hidden">
           
           {/* Grid structure: side-by-side on desktop, vertical stack on mobile */}
-          <div className="h-full w-full flex flex-col lg:grid lg:grid-cols-12 gap-6 min-h-0 overflow-hidden">
+          <div className="h-full w-full flex flex-col lg:grid lg:grid-cols-12 gap-6 min-h-0 overflow-y-auto lg:overflow-hidden">
             
             {/* Left Column: Tranh & Bài học */}
             <div className={`lg:col-span-6 flex flex-col min-h-0 overflow-y-auto h-[45dvh] lg:h-full shrink-0 ${stage === "warmup" ? "hidden lg:flex" : ""}`}>
@@ -1868,7 +1868,7 @@ export default function InteractiveTest() {
             </div>
 
             {/* Right Column: Trò chuyện cùng cô */}
-            <div className="lg:col-span-6 flex flex-col min-h-0 lg:border-l-4 border-slate-100 dark:border-slate-800 lg:pl-6 flex-1 lg:h-full">
+            <div className="lg:col-span-6 flex flex-col min-h-[350px] lg:min-h-0 lg:border-l-4 border-slate-100 dark:border-slate-800 lg:pl-6 flex-1 lg:h-full">
 
               {/* Dialogue exchange box (auto scroll) */}
               <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0 bg-slate-50 dark:bg-slate-950/40 rounded-2xl border border-slate-100 dark:border-slate-800">
@@ -1885,7 +1885,7 @@ export default function InteractiveTest() {
                           👩‍🏫
                         </div>
                       )}
-                      <div className={`relative max-w-[80%] lg:max-w-[88%] px-4 py-3 rounded-2xl text-xs md:text-sm font-black shadow-sm ${
+                      <div className={`relative max-w-[80%] lg:max-w-[88%] px-4 py-3 rounded-2xl text-sm md:text-base font-black shadow-sm ${
                         msg.role === "ai" 
                           ? "bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-750 text-slate-800 dark:text-slate-100 rounded-tl-none" 
                           : "bg-blue-500 text-white rounded-tr-none"
