@@ -159,7 +159,7 @@ You MUST return a JSON object with the following fields:
     console.log("🤖 [OpenRouter Gemini 2.5 Flash] Querying Gemini model for interactive-chat...");
     const rawContent = await callGemini([{ role: "user", content: geminiPrompt }], { 
       responseFormat: "json_object",
-      useDeepseekPrimary: developMode
+      useAdaptiveModels: true
     });
     const parsedData = safeJsonParse(rawContent);
     console.log("✅ [OpenRouter Gemini 2.5 Flash] Response parsed:", parsedData);

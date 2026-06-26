@@ -44,6 +44,8 @@ export interface CallGeminiOptions {
   temperature?: number;
   responseFormat?: "json_object" | "text";
   useDeepseekPrimary?: boolean;
+  /** Use adaptive test models: xiaomi/mimo-v2.5 (primary) + deepseek/deepseek-v4-flash (fallback) */
+  useAdaptiveModels?: boolean;
 }
 
 // ─── safeJsonParse ───────────────────────────────────────────────────────────
@@ -72,6 +74,7 @@ export async function callGemini(
     temperature = 0.7,
     responseFormat = "json_object",
     useDeepseekPrimary = false,
+    useAdaptiveModels = false,
   } = options;
 
   const primaryKey = process.env.OPENROUTER_API_KEY || process.env.GEMINI_API_KEY;
@@ -86,9 +89,11 @@ export async function callGemini(
     );
   }
 
-  const makeRequest = async (apiKey: string, modelName: string): Promise<string> => {
+  const makeRequest = async (apiKey: string, modelName: string, disableThinking = false): Promise<string> => {
     const client = createGeminiClient(apiKey);
-    const completion = await client.chat.completions.create({
+
+    // Build request body — disable thinking/reasoning when requested
+    const requestBody: any = {
       model: modelName,
       messages,
       max_tokens: maxTokens,
@@ -96,7 +101,14 @@ export async function callGemini(
       ...(responseFormat === "json_object"
         ? { response_format: { type: "json_object" as const } }
         : {}),
-    });
+    };
+
+    // OpenRouter: disable reasoning/thinking via provider-specific params
+    if (disableThinking && isOpenRouterKey(apiKey)) {
+      requestBody.reasoning = { effort: "none" };
+    }
+
+    const completion = await client.chat.completions.create(requestBody);
     const choice = completion.choices[0];
     if (!choice) throw new Error("OpenRouter Gemini returned empty response.");
 
@@ -113,10 +125,18 @@ export async function callGemini(
     return content;
   };
 
+  // Determine whether to disable thinking/reasoning
+  const disableThinking = useAdaptiveModels;
+
   let primaryModel = isOpenRouterKey(primaryKey) ? "google/gemini-2.5-flash" : "gemini-2.5-flash";
   let fallbackModel = isOpenRouterKey(primaryKey) ? "deepseek/deepseek-v4-flash" : "gemini-2.5-flash";
 
-  if (useDeepseekPrimary) {
+  if (useAdaptiveModels) {
+    // Adaptive test models: xiaomi/mimo-v2.5 (primary) + deepseek/deepseek-v4-flash (fallback)
+    primaryModel = "xiaomi/mimo-v2.5";
+    fallbackModel = "deepseek/deepseek-v4-flash";
+    console.log("🧠 [GeminiClient] ADAPTIVE TEST MODE: Using xiaomi/mimo-v2.5 (primary) + deepseek/deepseek-v4-flash (fallback). Thinking/Reasoning DISABLED.");
+  } else if (useDeepseekPrimary) {
     primaryModel = "deepseek/deepseek-v4-flash";
     fallbackModel = isOpenRouterKey(primaryKey) ? "google/gemini-2.5-flash" : "gemini-2.5-flash";
     console.log("🚀 [GeminiClient] Running in DEVELOP MODE: Using DeepSeek v4 Flash as primary and Gemini as fallback.");
@@ -124,7 +144,7 @@ export async function callGemini(
 
   // 1. Try primary key with primary model
   try {
-    return await makeRequest(primaryKey, primaryModel);
+    return await makeRequest(primaryKey, primaryModel, disableThinking);
   } catch (primaryErr: any) {
     console.error(
       `❌ [GeminiClient] Primary model ${primaryModel} failed:`,
@@ -146,7 +166,7 @@ export async function callGemini(
           `⚠️ [GeminiClient] Primary key with ${primaryModel} failed. Retrying with fallback model ${fallbackModel}...`
         );
         try {
-          return await makeRequest(primaryKey, fallbackModel);
+          return await makeRequest(primaryKey, fallbackModel, disableThinking);
         } catch (fallbackErr: any) {
           console.warn(
             `⚠️ [GeminiClient] Fallback model ${fallbackModel} also failed on primary key:`,
@@ -164,14 +184,14 @@ export async function callGemini(
           `⚠️ [GeminiClient] Retrying with backup key...`
         );
         try {
-          return await makeRequest(backupKey, backupModel);
+          return await makeRequest(backupKey, backupModel, disableThinking);
         } catch (backupErr: any) {
           if (isOpenRouterKey(backupKey) && backupFallback !== backupModel) {
             console.warn(
               `⚠️ [GeminiClient] Backup key with ${backupModel} failed. Retrying backup with fallback model ${backupFallback}...`
             );
             try {
-              return await makeRequest(backupKey, backupFallback);
+              return await makeRequest(backupKey, backupFallback, disableThinking);
             } catch (backupFallbackErr: any) {
               console.error(
                 "❌ [GeminiClient] Backup key and fallback model also failed:",

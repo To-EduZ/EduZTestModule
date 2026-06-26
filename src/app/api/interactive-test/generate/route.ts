@@ -161,7 +161,7 @@ Lưu ý quan trọng về JSON:
             content: `Từ khóa chủ đề hai bức tranh: [${themeWords.join(", ")}]. Hãy sinh bộ đề thi độc quyền chuẩn YLE ngay lập tức!`,
           },
         ],
-        { maxTokens: 1024, responseFormat: "json_object", temperature: 0.8, useDeepseekPrimary: developMode }
+        { maxTokens: 1024, responseFormat: "json_object", temperature: 0.8, useAdaptiveModels: true }
       );
 
       parsed = safeJsonParse(content);
