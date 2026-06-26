@@ -140,7 +140,7 @@ export default function InteractiveTest() {
 
   // Real-time and Child-friendly states (simplified: always real-time, always auto-mic)
   const isRealtimeMode = true;
-  const autoActivateMic = false;
+  const [autoActivateMic, setAutoActivateMic] = useState(false);
   const [realtimeTranscript, setRealtimeTranscript] = useState("");
   const [isSpeechSupported, setIsSpeechSupported] = useState(true);
   const [isTtsSpeaking, setIsTtsSpeaking] = useState(false);
@@ -1626,7 +1626,7 @@ export default function InteractiveTest() {
           >
             
             {/* Left Column: Tranh & Bài học */}
-            <div className={`lg:col-span-6 flex flex-col min-h-0 shrink-0 max-h-[35vh] sm:max-h-[40vh] lg:max-h-full lg:h-full ${stage === "warmup" ? "hidden lg:flex" : ""}`}>
+            <div className={`lg:col-span-6 flex flex-col min-h-0 shrink-0 max-h-[48vh] sm:max-h-[55vh] lg:max-h-full lg:h-full ${stage === "warmup" ? "hidden lg:flex" : ""}`}>
              {stage === "warmup" && (
                <div className="flex-1 flex flex-col justify-center items-center text-center p-4">
                  <div className="relative mb-6">
@@ -1642,7 +1642,7 @@ export default function InteractiveTest() {
              )}
 
              {stage === "picture" && currentQuestion && (
-               <div className="flex-1 flex flex-col min-h-0 justify-between">
+               <div className="flex-1 flex flex-col min-h-0 justify-between gap-2.5">
                  <div>
                    <h3 className="font-extrabold text-amber-700 dark:text-amber-300 flex items-center justify-between mb-3 text-xs uppercase tracking-wider">
                      <div className="flex items-center gap-2">
@@ -1662,7 +1662,7 @@ export default function InteractiveTest() {
                  {currentQuestion.imagePath && (
                    <div 
                      onClick={() => setIsImageZoomed(true)}
-                     className="relative w-full max-w-full sm:max-w-xl mx-auto aspect-video md:max-h-[420px] flex-1 min-h-[150px] sm:min-h-[220px] rounded-3xl overflow-hidden shadow-xl border-4 border-gradient-to-r from-amber-200 to-blue-200 dark:border-slate-700 hover:scale-[1.01] transition-transform duration-300 my-2 bg-slate-50 dark:bg-slate-950/40 cursor-pointer cursor-zoom-in"
+                     className="relative w-full max-w-full sm:max-w-xl mx-auto aspect-video md:max-h-[500px] flex-1 min-h-[150px] sm:min-h-[220px] rounded-3xl overflow-hidden shadow-xl border-4 border-gradient-to-r from-amber-200 to-blue-200 dark:border-slate-700 hover:scale-[1.01] transition-transform duration-300 my-1 bg-slate-50 dark:bg-slate-950/40 cursor-pointer cursor-zoom-in"
                    >
                      <Image 
                        src={currentQuestion.imagePath} 
@@ -1675,8 +1675,25 @@ export default function InteractiveTest() {
                    </div>
                  )}
 
+                 {/* Practice Mode Vocabulary Hints Card */}
+                 {(showVocabularyHint || (interactiveMode === "practice")) && (
+                   <div className="bg-amber-50/60 dark:bg-amber-955/10 border-2 border-dashed border-amber-250 dark:border-amber-900/40 rounded-2xl p-2.5 text-left shrink-0">
+                     <div className="flex items-center gap-1.5 mb-1">
+                       <span className="text-sm">💡</span>
+                       <h5 className="text-[10px] font-black uppercase text-amber-700 dark:text-amber-400 font-sans">Gợi ý từ vựng cho con:</h5>
+                     </div>
+                     <div className="flex flex-wrap gap-1.5">
+                       {currentQuestion?.questions?.[subQuestionIndex]?.expectedKeywords?.map((kw: string) => (
+                         <span key={kw} className="bg-white dark:bg-slate-850 text-slate-855 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-0.5 text-xs font-bold shadow-sm font-sans">
+                           {kw}
+                         </span>
+                       ))}
+                     </div>
+                   </div>
+                 )}
+
                  {/* Simplified star counter for keywords */}
-                 <div className="mt-3 flex items-center justify-between bg-slate-50 dark:bg-slate-850 border border-slate-100 dark:border-slate-800 p-3 rounded-2xl">
+                 <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-850 border border-slate-100 dark:border-slate-800 p-2.5 rounded-2xl shrink-0">
                    <span className="text-xs font-black text-slate-500 dark:text-slate-400">⭐ Từ vựng đạt:</span>
                    <div className="flex items-center gap-1">
                      <span className="text-lg font-black text-amber-500">{keywordsMentioned.length}</span>
@@ -1688,22 +1705,39 @@ export default function InteractiveTest() {
              )}
 
              {stage === "reading" && (
-               <div className="flex-1 flex flex-col justify-center min-h-0">
+               <div className="flex-1 flex flex-col justify-center min-h-0 gap-2">
                  {!showMcq ? (
                    // Reading Aloud slide
-                   <div className="flex flex-col items-center p-2 min-h-0">
-                     <h3 className="font-extrabold text-emerald-805 dark:text-emerald-355 mb-4 flex items-center gap-2 text-sm uppercase tracking-wider">
+                   <div className="flex flex-col items-center p-1.5 min-h-0 w-full">
+                     <h3 className="font-extrabold text-emerald-805 dark:text-emerald-355 mb-2.5 flex items-center gap-2 text-sm uppercase tracking-wider">
                        <span className="text-lg">📖</span>
                        Đọc to câu chuyện dưới đây cho cô giáo Lily nghe nhé:
                      </h3>
                      
-                     <div className="relative bg-amber-50 dark:bg-slate-855 border-4 border-amber-200 dark:border-slate-700 rounded-3xl p-6 md:p-8 shadow-inner w-full max-w-xl">
-                       <span className="absolute -top-4 -left-4 text-3xl">✨</span>
-                       <span className="absolute -bottom-4 -right-4 text-3xl">🎈</span>
-                       <p className="text-base md:text-xl font-bold text-slate-850 dark:text-slate-100 leading-relaxed font-sans text-center select-none whitespace-normal">
+                     <div className="relative bg-amber-50 dark:bg-slate-855 border-4 border-amber-200 dark:border-slate-700 rounded-3xl p-5 md:p-6 shadow-inner w-full max-w-xl mb-2.5">
+                       <span className="absolute -top-3 -left-3 text-2xl">✨</span>
+                       <span className="absolute -bottom-3 -right-3 text-2xl">🎈</span>
+                       <p className="text-base md:text-lg font-bold text-slate-800 dark:text-slate-100 leading-relaxed font-sans text-center select-none whitespace-normal">
                          "{activeStory}"
                        </p>
                      </div>
+
+                     {/* Practice Mode Vocabulary Hints Card */}
+                     {(showVocabularyHint || (interactiveMode === "practice")) && (
+                       <div className="bg-amber-50/60 dark:bg-amber-955/10 border-2 border-dashed border-amber-250 dark:border-amber-900/40 rounded-2xl p-2.5 text-left w-full max-w-xl shrink-0">
+                         <div className="flex items-center gap-1.5 mb-1">
+                           <span className="text-sm">💡</span>
+                           <h5 className="text-[10px] font-black uppercase text-amber-700 dark:text-amber-400 font-sans">Gợi ý từ vựng cho con:</h5>
+                         </div>
+                         <div className="flex flex-wrap gap-1.5">
+                           {activeStory.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "").split(/\s+/).slice(0, 5).map((kw: string) => (
+                             <span key={kw} className="bg-white dark:bg-slate-850 text-slate-855 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-0.5 text-xs font-bold shadow-sm font-sans">
+                               {kw}
+                             </span>
+                           ))}
+                         </div>
+                       </div>
+                     )}
                    </div>
                  ) : (
                    // Reading MCQ slide
@@ -1942,121 +1976,114 @@ export default function InteractiveTest() {
         </div>
       </div>
 
-      {/* Simplified Bottom Control Panel */}
-      <div className="bg-white dark:bg-slate-900 border-t-4 border-slate-150 dark:border-slate-800 p-2.5 sm:p-4 rounded-t-3xl shadow-lg shrink-0 select-none">
-        <div className="max-w-6xl mx-auto flex flex-col gap-2">
-
-          {/* Practice Mode Vocabulary Hints Card */}
-          {(showVocabularyHint || (interactiveMode === "practice" && (stage === "picture" || stage === "reading"))) && (
-            <div className="bg-amber-50 dark:bg-amber-955/20 border-2 border-dashed border-amber-300 dark:border-amber-905 rounded-2xl p-3 text-left animate-bounce-subtle shrink-0">
-              <div className="flex items-center gap-2 mb-1.5">
-                <span className="text-lg">💡</span>
-                <h5 className="text-xs font-black uppercase text-amber-700 dark:text-amber-400 font-sans">Gợi ý từ vựng cho con:</h5>
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {(stage === "picture" 
-                  ? currentQuestion?.questions?.[subQuestionIndex]?.expectedKeywords 
-                  : stage === "reading" 
-                  ? activeStory.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "").split(/\s+/).slice(0, 5) 
-                  : []
-                )?.map((kw: string) => (
-                  <span key={kw} className="bg-white dark:bg-slate-850 text-slate-800 dark:text-slate-200 border border-slate-205 dark:border-slate-700 rounded-xl px-2.5 py-1 text-xs font-bold shadow-sm font-sans">
-                    {kw}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
+      {/* Sleek, Space-efficient Bottom Control Panel */}
+      <div className="bg-white dark:bg-slate-900 border-t-2 border-slate-150 dark:border-slate-800 p-3 sm:p-4 rounded-t-3xl shadow-lg shrink-0 select-none">
+        <div className="max-w-4xl mx-auto flex flex-col gap-2">
           
-          {/* Transcript display (Full width) */}
-          <div className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 px-4 py-2 rounded-2xl h-12 sm:h-14 flex items-center overflow-hidden shrink-0">
-            {isRecording ? (
-              <div className="flex items-center gap-3 w-full">
-                <Soundwave />
-                <div className="flex-1 text-left min-w-0">
-                  <p className="text-[9px] sm:text-[10px] font-black text-rose-500 uppercase tracking-wider mb-0.5 animate-pulse">Con đang nói:</p>
-                  <p className="text-xs sm:text-sm font-black text-slate-705 dark:text-slate-300 truncate">
-                    {realtimeTranscript || "Hãy nói đi con, cô đang nghe nè... 🎤"}
-                  </p>
+          <div className="flex items-center gap-3 sm:gap-4 w-full">
+            {/* Left/Center Area: Status & Transcript (Unified) */}
+            <div className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-150 dark:border-slate-800 px-4 py-2.5 rounded-2xl min-h-[56px] flex flex-col justify-center overflow-hidden">
+              {isRecording ? (
+                <div className="flex items-center gap-3 w-full">
+                  <Soundwave />
+                  <div className="flex-1 text-left min-w-0">
+                    <p className="text-[9px] sm:text-[10px] font-black text-rose-500 uppercase tracking-wider mb-0.5 animate-pulse">Con đang nói:</p>
+                    <p className="text-xs sm:text-sm font-black text-slate-700 dark:text-slate-350 truncate">
+                      {realtimeTranscript || "Hãy nói đi con, cô đang nghe nè... 🎤"}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <p className="text-[11px] sm:text-xs md:text-sm font-black text-slate-550 dark:text-slate-400 w-full text-center">
-                {stage === "writing" 
-                  ? "Kéo thả hoặc bấm chữ cái để ghép từ ở trên nhé! ✍️" 
-                  : showMcq 
-                  ? "Chọn đáp án trắc nghiệm ở trên nhé! 🧩" 
-                  : isRecording 
-                  ? "Con cứ nói đi, cô sẽ tự nộp bài ⚡"
-                  : "Bấm nút 🎤 để nói với cô Lily"}
-              </p>
-            )}
-          </div>
-
-          {/* Action Row containing Mic trigger and child guide text */}
-          <div className="flex flex-col items-center gap-1.5 mt-1 w-full shrink-0">
-            {/* Big Mic Button */}
-            <div className="shrink-0">
-              {!isRecording ? (
-                <button 
-                  type="button"
-                  onClick={startRecording}
-                  disabled={isProcessing || showMcq || stage === "writing"}
-                  className="w-14 h-14 sm:w-16 sm:h-16 md:w-18 md:h-18 bg-gradient-to-tr from-emerald-400 to-green-500 text-white rounded-full flex flex-col items-center justify-center hover:scale-105 active:scale-[0.95] disabled:opacity-20 disabled:hover:scale-100 transition-all shadow-md cursor-pointer border-b-6 border-emerald-700 shrink-0"
-                >
-                  <Mic className="w-6 h-6 sm:w-7 sm:h-7 mb-0.5" />
-                  <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-wider">NÓI</span>
-                </button>
               ) : (
-                <button 
-                  type="button"
-                  onClick={stopRecording}
-                  className="w-14 h-14 sm:w-16 sm:h-16 md:w-18 md:h-18 bg-gradient-to-tr from-rose-400 to-red-500 text-white rounded-full flex flex-col items-center justify-center hover:scale-105 active:scale-[0.95] animate-pulse-slow shadow-md shadow-rose-200 cursor-pointer border-b-6 border-rose-700 shrink-0"
-                >
-                  <Square className="w-4 h-4 sm:w-5 sm:h-5 mb-0.5" />
-                  <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-wider">DỪNG</span>
-                </button>
+                <div className="text-left w-full">
+                  <p className="text-xs sm:text-sm font-black text-slate-700 dark:text-slate-350 leading-snug">
+                    {stage === "writing" 
+                      ? "Kéo thả hoặc bấm chữ cái để ghép từ ở trên nhé! ✍️" 
+                      : showMcq 
+                      ? "Chọn đáp án trắc nghiệm ở trên nhé! 🧩" 
+                      : "Sẵn sàng trò chuyện cùng cô Lily"}
+                  </p>
+                  {stage !== "writing" && !showMcq && (
+                    <p className="text-[10px] sm:text-xs text-slate-400 dark:text-slate-500 font-extrabold mt-0.5">
+                      {autoActivateMic 
+                        ? "🎤 Mic sẽ tự động bật khi cô Lily nói xong" 
+                        : "Bấm nút Nói màu xanh lá bên cạnh để bắt đầu nói với cô"}
+                    </p>
+                  )}
+                </div>
               )}
             </div>
 
-            {isDevModeEnabled && !showMcq && stage !== "writing" && (
-              <form onSubmit={handleMockTextSubmission} className="w-full max-w-sm flex gap-2 mt-2 px-4">
-                <input
-                  type="text"
-                  value={devInputText}
-                  onChange={(e) => setDevInputText(e.target.value)}
-                  placeholder="Giả lập lời nói của bé (Dev)..."
-                  className="flex-1 bg-slate-100 dark:bg-slate-800 border border-slate-350 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <button
-                  type="submit"
-                  disabled={isProcessing}
-                  className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-black px-4 py-2 rounded-xl transition-all disabled:opacity-50 cursor-pointer"
-                >
-                  Gửi
-                </button>
-              </form>
+            {/* Mic / Stop Action Button on the Right */}
+            {stage !== "writing" && !showMcq && (
+              <div className="shrink-0">
+                {!isRecording ? (
+                  <button 
+                    type="button"
+                    onClick={startRecording}
+                    disabled={isProcessing}
+                    className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-tr from-emerald-400 to-green-500 text-white rounded-full flex flex-col items-center justify-center hover:scale-105 active:scale-[0.95] disabled:opacity-20 disabled:hover:scale-100 transition-all shadow-md cursor-pointer border-b-4 border-emerald-700 shrink-0"
+                  >
+                    <Mic className="w-5 h-5 sm:w-6 sm:h-6" />
+                    <span className="text-[8px] font-black uppercase tracking-wider mt-0.5">NÓI</span>
+                  </button>
+                ) : (
+                  <button 
+                    type="button"
+                    onClick={stopRecording}
+                    className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-tr from-rose-400 to-red-500 text-white rounded-full flex flex-col items-center justify-center hover:scale-105 active:scale-[0.95] animate-pulse-slow shadow-md shadow-rose-200 cursor-pointer border-b-4 border-rose-700 shrink-0"
+                  >
+                    <Square className="w-4 h-4 sm:w-5 sm:h-5" />
+                    <span className="text-[8px] font-black uppercase tracking-wider mt-0.5">DỪNG</span>
+                  </button>
+                )}
+              </div>
             )}
-
-            {/* Hint message for children */}
-            <p className="text-center text-[10px] text-slate-450 dark:text-slate-500 font-extrabold select-none max-w-xs sm:max-w-md">
-              {stage === "writing" 
-                ? "Con hãy kéo thả các chữ cái hoặc bấm để ghép từ nhé! ✍️" 
-                : showMcq 
-                ? "Con hãy chọn câu trả lời ở bên trái nhé!" 
-                : isRecording 
-                ? isRealtimeMode 
-                  ? "Con cứ nói đi, cô sẽ tự nộp bài khi con dừng nói ⚡" 
-                  : "Đang nghe... Con bấm nút Dừng màu đỏ khi nói xong nhé!" 
-                : "Bấm nút Nói màu xanh lá để bắt đầu nói với cô Lily"}
-            </p>
           </div>
 
-        </div>
+          {/* Settings Row (Auto-mic Toggle) */}
+          {stage !== "writing" && !showMcq && (
+            <div className="flex items-center justify-end gap-2 px-1 text-[10px] sm:text-xs font-bold text-slate-500 dark:text-slate-400">
+              <span>🎙️ Tự động bật Mic</span>
+              <button
+                type="button"
+                onClick={() => setAutoActivateMic(!autoActivateMic)}
+                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  autoActivateMic ? "bg-emerald-500" : "bg-slate-200 dark:bg-slate-700"
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    autoActivateMic ? "translate-x-4" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
+          )}
 
+          {/* Dev Mode Input Sub-row */}
+          {isDevModeEnabled && !showMcq && stage !== "writing" && (
+            <form onSubmit={handleMockTextSubmission} className="w-full flex gap-2 mt-1">
+              <input
+                type="text"
+                value={devInputText}
+                onChange={(e) => setDevInputText(e.target.value)}
+                placeholder="Giả lập lời nói của bé (Dev)..."
+                className="flex-1 bg-slate-100 dark:bg-slate-800 border border-slate-350 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <button
+                type="submit"
+                disabled={isProcessing}
+                className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-black px-4 py-1.5 rounded-xl transition-all disabled:opacity-50 cursor-pointer"
+              >
+                Gửi
+              </button>
+            </form>
+          )}
+
+        </div>
       </div>
 
-      {/* Image Zoom Modal Overlay */}
+{/* Image Zoom Modal Overlay */}
       {isImageZoomed && currentQuestion?.imagePath && (
         <div 
           className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 cursor-zoom-out"
