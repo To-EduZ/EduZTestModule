@@ -1622,11 +1622,11 @@ export default function InteractiveTest() {
           {/* Grid structure: side-by-side on desktop, vertical stack on mobile */}
           <div 
             ref={mainScrollContainerRef}
-            className="h-full w-full flex flex-col lg:grid lg:grid-cols-12 gap-6 min-h-0 overflow-y-auto lg:overflow-hidden"
+            className="h-full w-full flex flex-col lg:grid lg:grid-cols-12 gap-3 sm:gap-6 min-h-0 overflow-hidden"
           >
             
             {/* Left Column: Tranh & Bài học */}
-            <div className={`lg:col-span-6 flex flex-col min-h-0 shrink-0 lg:h-full ${stage === "warmup" ? "hidden lg:flex" : ""}`}>
+            <div className={`lg:col-span-6 flex flex-col min-h-0 shrink-0 max-h-[35vh] sm:max-h-[40vh] lg:max-h-full lg:h-full ${stage === "warmup" ? "hidden lg:flex" : ""}`}>
              {stage === "warmup" && (
                <div className="flex-1 flex flex-col justify-center items-center text-center p-4">
                  <div className="relative mb-6">
@@ -1879,7 +1879,7 @@ export default function InteractiveTest() {
             </div>
 
             {/* Right Column: Trò chuyện cùng cô */}
-            <div className="lg:col-span-6 flex flex-col min-h-[350px] lg:min-h-0 lg:border-l-4 border-slate-100 dark:border-slate-800 lg:pl-6 flex-1 lg:h-full">
+            <div className="lg:col-span-6 flex flex-col min-h-0 lg:border-l-4 border-slate-100 dark:border-slate-800 lg:pl-6 flex-1 lg:h-full">
 
               {/* Dialogue exchange box (auto scroll) */}
               <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0 bg-slate-50 dark:bg-slate-950/40 rounded-2xl border border-slate-100 dark:border-slate-800">
