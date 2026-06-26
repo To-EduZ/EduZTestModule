@@ -549,8 +549,7 @@ export default function InteractiveTest() {
           console.log("⏱️ Hesitation detected (5 seconds)!");
           // Check if user has spoken any keywords of the current question
           const currentWords = realtimeTranscriptRef.current.toLowerCase();
-          const currentQ = currentQuestion?.questions?.[subQuestionIndex];
-          const expected = currentQ?.expectedKeywords || [];
+          const expected = currentQuestion?.questions?.[subQuestionIndex]?.expectedKeywords || currentQuestion?.evaluationCriteria?.expectedKeywords || [];
           const hasMatchedAny = expected.some((kw: string) => currentWords.includes(kw.toLowerCase()));
           
           if (!hasMatchedAny) {
@@ -1683,11 +1682,21 @@ export default function InteractiveTest() {
                        <h5 className="text-[10px] font-black uppercase text-amber-700 dark:text-amber-400 font-sans">Gợi ý từ vựng cho con:</h5>
                      </div>
                      <div className="flex flex-wrap gap-1.5">
-                       {currentQuestion?.questions?.[subQuestionIndex]?.expectedKeywords?.map((kw: string) => (
-                         <span key={kw} className="bg-white dark:bg-slate-850 text-slate-855 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-0.5 text-xs font-bold shadow-sm font-sans">
-                           {kw}
-                         </span>
-                       ))}
+                       {(currentQuestion?.questions?.[subQuestionIndex]?.expectedKeywords || currentQuestion?.evaluationCriteria?.expectedKeywords || [])?.map((kw: string) => {
+                          const isHit = keywordsMentioned.some((k) => k.toLowerCase() === kw.toLowerCase());
+                          return (
+                            <span 
+                              key={kw} 
+                              className={`border rounded-xl px-2.5 py-0.5 text-xs font-bold shadow-sm font-sans transition-all duration-300 ${
+                                isHit 
+                                  ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border-emerald-250 dark:border-emerald-800 scale-105" 
+                                  : "bg-white dark:bg-slate-850 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700"
+                              }`}
+                            >
+                              {kw}
+                            </span>
+                          );
+                        })}
                      </div>
                    </div>
                  )}
