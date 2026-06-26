@@ -130,12 +130,14 @@ export async function callGemini(
 
   let primaryModel = isOpenRouterKey(primaryKey) ? "google/gemini-2.5-flash" : "gemini-2.5-flash";
   let fallbackModel = isOpenRouterKey(primaryKey) ? "deepseek/deepseek-v4-flash" : "gemini-2.5-flash";
+  let tertiaryModel = "";
 
   if (useAdaptiveModels) {
-    // Adaptive test models: deepseek/deepseek-v4-flash (primary) + xiaomi/mimo-v2.5 (fallback)
-    primaryModel = "deepseek/deepseek-v4-flash";
-    fallbackModel = "xiaomi/mimo-v2.5";
-    console.log("🧠 [GeminiClient] ADAPTIVE TEST MODE: Using deepseek/deepseek-v4-flash (primary) + xiaomi/mimo-v2.5 (fallback). Thinking/Reasoning DISABLED.");
+    // Adaptive test models: 3-layer fallback
+    primaryModel = "google/gemini-2.5-flash";
+    fallbackModel = "google/gemini-2.5-flash-lite";
+    tertiaryModel = "anthropic/claude-3-haiku";
+    console.log("🧠 [GeminiClient] ADAPTIVE TEST MODE: Using gemini-2.5-flash -> gemini-2.5-flash-lite -> claude-3-haiku. Thinking DISABLED.");
   } else if (useDeepseekPrimary) {
     primaryModel = "deepseek/deepseek-v4-flash";
     fallbackModel = isOpenRouterKey(primaryKey) ? "google/gemini-2.5-flash" : "gemini-2.5-flash";
@@ -172,6 +174,14 @@ export async function callGemini(
             `⚠️ [GeminiClient] Fallback model ${fallbackModel} also failed on primary key:`,
             fallbackErr?.message
           );
+          if (tertiaryModel) {
+            console.warn(`⚠️ [GeminiClient] Retrying with tertiary model ${tertiaryModel}...`);
+            try {
+              return await makeRequest(primaryKey, tertiaryModel, disableThinking);
+            } catch (tertErr: any) {
+              console.warn(`⚠️ [GeminiClient] Tertiary model ${tertiaryModel} also failed.`);
+            }
+          }
         }
       }
 
