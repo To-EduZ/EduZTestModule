@@ -151,6 +151,17 @@ export default function InteractiveTest() {
   const recognitionRef = useRef<any>(null);
   const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const realtimeTranscriptRef = useRef("");
+  const transitionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const mainScrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Scroll to top of the main container when stage changes
+  useEffect(() => {
+    if (mainScrollContainerRef.current) {
+      mainScrollContainerRef.current.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }, [stage, pictureIndex]); // Cuộn lên đầu khi qua bài hoặc đổi ảnh
+
+  const handleAudioSubmissionRef = useRef<any>(null);
   const hesitationTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const voices = [
@@ -1612,7 +1623,10 @@ export default function InteractiveTest() {
         <div className="absolute inset-4 bg-white dark:bg-slate-900 rounded-3xl border-4 border-slate-150 dark:border-slate-800 shadow-md p-4 md:p-6 overflow-hidden">
           
           {/* Grid structure: side-by-side on desktop, vertical stack on mobile */}
-          <div className="h-full w-full flex flex-col lg:grid lg:grid-cols-12 gap-6 min-h-0 overflow-y-auto lg:overflow-hidden">
+          <div 
+            ref={mainScrollContainerRef}
+            className="h-full w-full flex flex-col lg:grid lg:grid-cols-12 gap-6 min-h-0 overflow-y-auto lg:overflow-hidden"
+          >
             
             {/* Left Column: Tranh & Bài học */}
             <div className={`lg:col-span-6 flex flex-col min-h-0 shrink-0 lg:h-full ${stage === "warmup" ? "hidden lg:flex" : ""}`}>
