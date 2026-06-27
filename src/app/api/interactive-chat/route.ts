@@ -248,7 +248,7 @@ You MUST return a JSON object with the following fields:
 
         if (!hasTransition) {
           const sentences = cleanAiResponse.split(/(?<=[.!?])\s+/);
-          const nonQuestionSentences = sentences.filter(s => !s.includes("?"));
+          const nonQuestionSentences = sentences.filter((s: string) => !s.includes("?"));
           const praise = nonQuestionSentences.join(" ");
           finalAiResponse = praise ? `${praise} ${transitionPrompt}` : transitionPrompt;
         }
@@ -261,7 +261,7 @@ You MUST return a JSON object with the following fields:
 
       if (!hasTransition) {
         const sentences = cleanAiResponse.split(/(?<=[.!?])\s+/);
-        const nonQuestionSentences = sentences.filter(s => !s.includes("?"));
+        const nonQuestionSentences = sentences.filter((s: string) => !s.includes("?"));
         const praise = nonQuestionSentences.join(" ");
         finalAiResponse = praise ? `${praise} ${transitionPrompt}` : transitionPrompt;
       }

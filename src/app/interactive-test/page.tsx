@@ -281,6 +281,7 @@ export default function InteractiveTest() {
   const pendingTransitionRef = useRef<(() => void) | null>(null);
   const transitionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const mainScrollContainerRef = useRef<HTMLDivElement>(null);
+  const answerZoneRef = useRef<HTMLDivElement>(null);
 
   // Scroll to top of the main container when stage changes
   useEffect(() => {
@@ -359,6 +360,16 @@ export default function InteractiveTest() {
       setWritingSubmitted(false);
     }
   }, [stage, writingTaskIndex]);
+
+  // Auto-scroll the spelling answer zone to the right end when selectedLetters updates
+  useEffect(() => {
+    if (answerZoneRef.current) {
+      answerZoneRef.current.scrollTo({
+        left: answerZoneRef.current.scrollWidth,
+        behavior: "smooth",
+      });
+    }
+  }, [selectedLetters]);
 
   const playTTS = (text: string) => {
     const cleanText = text.replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, '');
@@ -2007,13 +2018,14 @@ export default function InteractiveTest() {
 
                    {/* Answer zone — where selected letters appear */}
                    <div 
+                     ref={answerZoneRef}
                      onDragOver={(e) => handleDragOver(e, "answer")}
                      onDragEnter={(e) => handleDragEnter(e, "answer")}
                      onDragLeave={(e) => handleDragLeave(e, "answer")}
                      onDrop={(e) => handleDrop(e, "answer")}
                      className={`answer-zone w-full mb-4 transition-all duration-200 ${
                        selectedLetters.length > 0 ? "has-letters" : ""
-                     } ${isDragOverAnswer ? "border-indigo-500 dark:border-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/40 ring-4 ring-indigo-200/50 scale-[1.02]" : ""}`}
+                     } ${selectedLetters.length > 6 ? "scale-down" : ""} ${isDragOverAnswer ? "border-indigo-500 dark:border-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/40 ring-4 ring-indigo-200/50 scale-[1.02]" : ""}`}
                    >
                      {selectedLetters.length === 0 ? (
                        <span className="text-xs font-bold text-slate-400 italic">
