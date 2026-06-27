@@ -500,13 +500,17 @@ export default function InteractiveTest() {
         lastAskedPicIndexRef.current = pictureIndex;
         setSubQuestionIndex(0);
         
-        const firstQuestionText = currentQuestion.questions?.[0]?.examinerScript || currentQuestion.examinerScript || "Look at the picture. What can you see?";
-        
-        const timer = setTimeout(() => {
-          setIsTransitioningStage(false);
-          addAiMessage(firstQuestionText);
-        }, 1200);
-        return () => clearTimeout(timer);
+        // For pictureIndex === 0 (Picture 1), we use this local timer fallback.
+        // For pictureIndex === 1 (Picture 2), sendSilentTransitionMessage() will fetch the greeting & question dynamically.
+        if (pictureIndex === 0) {
+          const firstQuestionText = currentQuestion.questions?.[0]?.examinerScript || currentQuestion.examinerScript || "Look at the picture. What can you see?";
+          
+          const timer = setTimeout(() => {
+            setIsTransitioningStage(false);
+            addAiMessage(firstQuestionText);
+          }, 1200);
+          return () => clearTimeout(timer);
+        }
       }
     }
   }, [stage, pictureIndex, currentQuestion]);
@@ -703,10 +707,12 @@ export default function InteractiveTest() {
 
       const data = await res.json();
       if (data.success) {
+        setIsTransitioningStage(false); // Reset transitioning flag to allow mic activation after the speaking is finished
         addAiMessage(data.aiResponse);
       }
     } catch (err) {
       console.error("Silent transition failed:", err);
+      setIsTransitioningStage(false); // Reset flag on error to prevent locking
     } finally {
       setIsProcessing(false);
     }

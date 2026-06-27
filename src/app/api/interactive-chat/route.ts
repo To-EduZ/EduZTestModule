@@ -186,7 +186,9 @@ You MUST return a JSON object with the following fields:
     let finalStageComplete = parsedData.stageComplete || false;
     let finalAiResponse = parsedData.aiResponse || "";
 
-    if (stage === "picture") {
+    if (stage === "warmup" && finalStageComplete) {
+      finalAiResponse = "Great job! Let's look at a picture now.";
+    } else if (stage === "picture") {
       const pictureIndex = context.pictureIndex || 0;
       const subQuestionIndex = typeof context.subQuestionIndex === "number" ? context.subQuestionIndex : 0;
       const questions = context.questions || [];
@@ -216,6 +218,54 @@ You MUST return a JSON object with the following fields:
         }
 
         finalAiResponse = `That's okay! It is a ${correctWord}. 🌟 ${nextPrompt}`;
+      }
+
+      // Out-of-bounds safety check: enforce stage complete when all questions in the array are answered
+      let nextIndex = finalNextSubQuestionIndex;
+      if (nextIndex === undefined) {
+        nextIndex = subQuestionIndex + 1;
+      }
+
+      if (nextIndex >= questions.length) {
+        finalStageComplete = true;
+      }
+
+      // If picture stage is completed, ensure transition prompt is correct and doesn't ask any further question
+      if (finalStageComplete) {
+        let transitionPrompt = "";
+        if (pictureIndex === 0) {
+          transitionPrompt = "Great job with the first picture! Now let's look at a second picture.";
+        } else {
+          transitionPrompt = "Excellent! You did a great job with both pictures. Now, let's read a short story together.";
+        }
+
+        const cleanAiResponse = finalAiResponse.trim();
+        const hasTransition = cleanAiResponse.toLowerCase().includes("second picture") || cleanAiResponse.toLowerCase().includes("read a short story");
+
+        if (!hasTransition) {
+          const sentences = cleanAiResponse.split(/(?<=[.!?])\s+/);
+          const nonQuestionSentences = sentences.filter(s => !s.includes("?"));
+          const praise = nonQuestionSentences.join(" ");
+          finalAiResponse = praise ? `${praise} ${transitionPrompt}` : transitionPrompt;
+        }
+      }
+    } else if (stage === "reading") {
+      finalStageComplete = true;
+      const transitionPrompt = "Fantastic reading! You read the story beautifully. Let's answer a quick question about it now!";
+      const cleanAiResponse = finalAiResponse.trim();
+      const hasTransition = cleanAiResponse.toLowerCase().includes("fantastic reading") || cleanAiResponse.toLowerCase().includes("beautifully");
+
+      if (!hasTransition) {
+        const sentences = cleanAiResponse.split(/(?<=[.!?])\s+/);
+        const nonQuestionSentences = sentences.filter(s => !s.includes("?"));
+        const praise = nonQuestionSentences.join(" ");
+        finalAiResponse = praise ? `${praise} ${transitionPrompt}` : transitionPrompt;
+      }
+    } else {
+      // For any other final stages (writing spelling etc.)
+      finalStageComplete = true;
+      if (!finalAiResponse.toLowerCase().includes("goodbye") && !finalAiResponse.toLowerCase().includes("see you")) {
+        finalAiResponse = "You did amazingly well today! Goodbye and see you next time!";
       }
     }
 
