@@ -4,6 +4,8 @@ export interface IInteractiveSession extends Document {
   userId: string;
   kidName: string;
   kidAge: number;
+  testKidName?: string;
+  testKidAge?: number;
   scores: {
     speaking: number;
     listening: number;
@@ -27,6 +29,8 @@ const InteractiveSessionSchema: Schema<IInteractiveSession> = new Schema(
     userId: { type: String, required: true },
     kidName: { type: String, required: true },
     kidAge: { type: Number, required: true },
+    testKidName: { type: String, required: false },
+    testKidAge: { type: Number, required: false },
     scores: {
       speaking: { type: Number, required: true },
       listening: { type: Number, required: true },

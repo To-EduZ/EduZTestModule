@@ -15,6 +15,8 @@ interface InteractiveSession {
   _id: string;
   kidName: string;
   kidAge: number;
+  testKidName?: string;
+  testKidAge?: number;
   scores: {
     speaking: number;
     listening: number;
@@ -223,8 +225,10 @@ export default function InteractiveDashboard() {
         const overallScore = getOverallAvgScore(s.scores);
         return {
           "STT": index + 1,
-          "Tên Học Viên": s.kidName,
-          "Tuổi": s.kidAge,
+          "Tên Học Viên (Hồ sơ)": s.kidName,
+          "Tuổi (Hồ sơ)": s.kidAge,
+          "Tên (Lúc Test)": s.testKidName || "Con",
+          "Tuổi (Lúc Test)": s.testKidAge || s.kidAge,
           "Trường": s.school || "Chưa cập nhật",
           "Lớp": s.className || "Chưa cập nhật",
           "SĐT": s.phone || "Chưa cập nhật",
@@ -440,10 +444,12 @@ export default function InteractiveDashboard() {
                           </span>
                         </td>
                         <td className="py-4 px-6 font-black text-slate-800 dark:text-slate-100">
-                          {session.kidName}
+                          <div>{session.kidName}</div>
+                          <div className="text-[10px] text-slate-400 font-medium">Test: {session.testKidName || "Con"}</div>
                         </td>
                         <td className="py-4 px-6 text-slate-500 font-extrabold">
-                          {session.kidAge} tuổi
+                          <div>{session.kidAge} tuổi</div>
+                          <div className="text-[10px] text-slate-400 font-medium">Test: {session.testKidAge || session.kidAge} tuổi</div>
                         </td>
                         <td className="py-4 px-6 font-black">
                           <span className={`inline-block px-2.5 py-0.8 rounded-lg ${avg >= 85 ? "bg-emerald-50 text-emerald-600 border border-emerald-200" : avg >= 60 ? "bg-amber-50 text-amber-600 border border-amber-200" : "bg-rose-50 text-rose-600 border border-rose-200"}`}>
@@ -521,6 +527,25 @@ export default function InteractiveDashboard() {
             {/* Drawer Scrollable Content */}
             <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-white dark:bg-slate-900" ref={resultsRef}>
               
+              {/* Student Information Info Card */}
+              <div className="bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-2xl p-4 space-y-2">
+                <h3 className="text-xs font-black text-slate-500 dark:text-slate-450 uppercase tracking-wider flex items-center gap-1.5">
+                  <User className="w-4 h-4 text-sky-500" /> Thông tin học sinh
+                </h3>
+                <div className="grid grid-cols-2 gap-4 text-xs">
+                  <div className="bg-slate-50 dark:bg-slate-850/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
+                    <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-1">Hồ sơ / Lúc nhập</span>
+                    <div className="font-extrabold text-slate-805 dark:text-slate-200">Tên: {selectedSession.kidName}</div>
+                    <div className="font-extrabold text-slate-805 dark:text-slate-200 mt-0.5">Tuổi: {selectedSession.kidAge} tuổi</div>
+                  </div>
+                  <div className="bg-indigo-50/30 dark:bg-indigo-950/10 p-3 rounded-xl border border-indigo-100/50 dark:border-indigo-900/30">
+                    <span className="text-[10px] font-black text-indigo-400 dark:text-indigo-500 uppercase tracking-wider block mb-1">Khai báo lúc làm bài</span>
+                    <div className="font-extrabold text-slate-805 dark:text-slate-200">Tên: {selectedSession.testKidName || "Con"}</div>
+                    <div className="font-extrabold text-slate-805 dark:text-slate-200 mt-0.5">Tuổi: {selectedSession.testKidAge || selectedSession.kidAge} tuổi</div>
+                  </div>
+                </div>
+              </div>
+
               {/* Star Rating & YLE Certificate Level Display */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Level Badge */}

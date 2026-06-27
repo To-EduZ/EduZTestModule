@@ -29,8 +29,8 @@ export async function POST(req: NextRequest) {
       try {
         const userDoc = await User.findById(userId);
         if (userDoc) {
-          if (!kidName || kidName === "Con") finalKidName = userDoc.name;
-          if (!kidAge) finalKidAge = userDoc.age;
+          finalKidName = userDoc.name || kidName;
+          finalKidAge = userDoc.age !== undefined && userDoc.age !== null ? userDoc.age : kidAge;
         }
       } catch (e) {
         console.warn("Could not fetch user by ID", e);
@@ -48,6 +48,8 @@ export async function POST(req: NextRequest) {
       userId: userId || DEFAULT_USER_ID,
       kidName: finalKidName,
       kidAge: Number(finalKidAge),
+      testKidName: kidName || "Con",
+      testKidAge: kidAge ? Number(kidAge) : 7,
       scores: {
         speaking: Number(scores.speaking || 0),
         listening: Number(scores.listening || 0),
