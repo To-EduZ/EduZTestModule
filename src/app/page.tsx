@@ -43,6 +43,13 @@ export default function Dashboard() {
 
   const handleUserFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    const ageNum = parseInt(userInfo.age, 10);
+    if (isNaN(ageNum) || ageNum < 2 || ageNum > 15) {
+      alert("Độ tuổi của bé không phù hợp (Hệ thống chỉ hỗ trợ bé từ 2 đến 15 tuổi).");
+      return;
+    }
+
     setIsSubmittingUser(true);
     try {
       const res = await fetch("/api/users", {
@@ -126,7 +133,7 @@ export default function Dashboard() {
               </Link>
 
               <Link href="/dashboard" className="flex-1 md:flex-none">
-                <button className="w-full md:w-auto flex items-center justify-center gap-1.5 px-3 py-2 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200/50 dark:border-slate-750 text-slate-700 dark:text-slate-200 text-[10px] md:text-xs font-black tracking-wider uppercase transition-all duration-200 shadow-sm cursor-pointer">
+                <button className="w-full md:w-auto flex items-center justify-center gap-1.5 px-3 py-2 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200/50 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-[10px] md:text-xs font-black tracking-wider uppercase transition-all duration-200 shadow-sm cursor-pointer">
                   <BarChart3 className="w-3.5 h-3.5 text-blue-500" />
                   Thống kê
                 </button>
@@ -138,7 +145,7 @@ export default function Dashboard() {
               <select
                 value={selectedVoice}
                 onChange={(e) => handleVoiceChange(e.target.value)}
-                className="appearance-none bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-250/50 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-[10px] md:text-xs font-extrabold rounded-full pl-7 md:pl-8 pr-6 md:pr-8 py-2 md:py-2.5 transition-all shadow-sm focus:outline-none cursor-pointer"
+                className="appearance-none bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200/50 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-[10px] md:text-xs font-extrabold rounded-full pl-7 md:pl-8 pr-6 md:pr-8 py-2 md:py-2.5 transition-all shadow-sm focus:outline-none cursor-pointer"
               >
                 {voices.map((v) => (
                   <option key={v.code} value={v.code} className="dark:bg-slate-900 dark:text-slate-200">
@@ -188,7 +195,7 @@ export default function Dashboard() {
                 <Sparkles className="w-3.5 h-3.5 fill-indigo-400/40" />
                 Kiểm tra theo ngữ cảnh
               </span>
-              <h3 className="text-xl md:text-2xl font-black text-slate-850 dark:text-slate-100 leading-tight mb-2">
+              <h3 className="text-xl md:text-2xl font-black text-slate-800 dark:text-slate-100 leading-tight mb-2">
                 Bài Test Tương Tác 👩‍🏫
               </h3>
               <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 leading-relaxed mb-6">
@@ -232,12 +239,12 @@ export default function Dashboard() {
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-lg font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
                 <span>Cấu Hình Hệ Thống</span>
-                <span className="bg-amber-100 dark:bg-amber-955 text-amber-600 dark:text-amber-400 text-[10px] px-2 py-0.5 rounded font-mono font-black uppercase">DEV</span>
+                <span className="bg-amber-100 dark:bg-amber-950 text-amber-600 dark:text-amber-400 text-[10px] px-2 py-0.5 rounded font-mono font-black uppercase">DEV</span>
               </h3>
               <button 
                 type="button"
                 onClick={() => setIsSettingsOpen(false)}
-                className="text-slate-450 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 font-extrabold cursor-pointer"
+                className="text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 font-extrabold cursor-pointer"
               >
                 ✕
               </button>
@@ -246,10 +253,10 @@ export default function Dashboard() {
             <div className="space-y-6 text-left">
               <div>
                 <p className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">Chế Độ Phát Triển (Develop Mode)</p>
-                <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-955/20 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+                <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-950/20 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
                   <div>
-                    <h4 className="text-sm font-extrabold text-slate-705 dark:text-slate-200 mb-0.5">Sử dụng DeepSeek API</h4>
-                    <p className="text-xs text-slate-450 dark:text-slate-500 font-bold">DeepSeek Chat làm chính, Gemini làm dự phòng.</p>
+                    <h4 className="text-sm font-extrabold text-slate-700 dark:text-slate-200 mb-0.5">Sử dụng DeepSeek API</h4>
+                    <p className="text-xs text-slate-400 dark:text-slate-500 font-bold">DeepSeek Chat làm chính, Gemini làm dự phòng.</p>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer select-none shrink-0 ml-4">
                     <input 
@@ -271,7 +278,7 @@ export default function Dashboard() {
             <button
               type="button"
               onClick={() => setIsSettingsOpen(false)}
-              className="mt-6 w-full bg-indigo-600 hover:bg-indigo-750 text-white rounded-2xl py-3 font-extrabold text-sm tracking-wider uppercase cursor-pointer transition-all duration-200 border-b-4 border-indigo-800"
+              className="mt-6 w-full bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl py-3 font-extrabold text-sm tracking-wider uppercase cursor-pointer transition-all duration-200 border-b-4 border-indigo-800"
             >
               Lưu & Đóng
             </button>

@@ -319,7 +319,7 @@ export default function AnalyticsDashboard() {
             <div className="flex flex-wrap items-center gap-3">
               <Link href="/dashboard/interactive">
                 <button className="flex items-center gap-1.5 bg-sky-600 hover:bg-sky-700 text-white text-sm font-extrabold px-5 py-2 rounded-full shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer">
-                  <span>💬</span> Lịch Sử Hội Thoại AI
+                  <span>💬</span> Lịch Sử Các Bài Thi
                 </button>
               </Link>
               <Link href="/dashboard/mascots">

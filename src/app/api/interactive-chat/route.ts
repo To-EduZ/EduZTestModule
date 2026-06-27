@@ -85,6 +85,7 @@ Follow this exact flow:
       const subQuestionIndex = typeof context.subQuestionIndex === "number" ? context.subQuestionIndex : 0;
       const questions = context.questions || [];
       const attemptsCount = typeof context.attemptsCount === "number" ? context.attemptsCount : 0;
+      const keywordsMentioned = context.keywordsMentioned || [];
 
       if (transcribedText === "[NEW_PICTURE]") {
         stageInstructions = `
@@ -107,6 +108,7 @@ ${JSON.stringify(questions)}
 
 The child is currently at question index: ${subQuestionIndex}.
 The number of times the child has already answered this question incorrectly: ${attemptsCount}.
+The child has already mentioned these keywords in previous turns: ${JSON.stringify(keywordsMentioned)}.
 Child's response: "${transcribedText}".
 
 Your tasks:
@@ -117,7 +119,8 @@ Your tasks:
      - If attemptsCount is 0 (first incorrect attempt): You MUST keep "nextSubQuestionIndex" at the current index (${subQuestionIndex}). Do NOT advance. In "aiResponse", encourage the child, provide a specific and helpful hint (gợi ý) to guide them (without stating the exact answer, e.g. describe the object/action or its traits based on the question's expectedKeywords), and ask the question again.
      - If attemptsCount >= 1 (second incorrect attempt): You MUST NOT keep asking or prompting for the same question. Force this question to be completed immediately! Force "nextSubQuestionIndex" to advance to the next index (${subQuestionIndex + 1}). In "aiResponse", reveal the correct answer clearly (e.g. "That's okay! It is a [expected keyword]!") and then transition to ask the next question at questions[nextSubQuestionIndex].examinerScript (or if stageComplete is true, transition to the next picture/stage).
 2. Check if the child's response also answers any of the subsequent questions (indices ${subQuestionIndex + 1}, ${subQuestionIndex + 2}, etc.) in the questions array (this is "real-time pacing" / answering questions in advance).
-   - CRITICAL REAL-TIME PACING & ADVANCE ANSWERING RULE: If the child's response has *already* answered or mentioned the actions, objects, or details of any subsequent questions (e.g., they mentioned the boy is swinging or the girl is sliding in their first description), you MUST include those subsequent question indices in the "answeredIndices" array so they are marked as answered in advance. It is extremely annoying to the child to be asked a question they have already answered. Be very proactive in marking them as answered!
+   - CRITICAL REAL-TIME PACING & ADVANCE ANSWERING RULE: If the child's response has *already* answered or mentioned the actions, objects, or details of any subsequent questions (e.g., they mentioned the boy is swinging or the girl is sliding in their first description), you MUST include those subsequent question indices in the "answeredIndices" array so they are marked as answered in advance. 
+   - CRITICAL PAST KEYWORD RULE: You MUST ALSO check if any future questions ask for keywords that are already in the "keywordsMentioned" list. If a future question asks about something the child ALREADY mentioned in the past, you MUST skip that question by including its index in the "answeredIndices" array. It is extremely annoying to the child to be asked a question they have already answered. Be very proactive in marking them as answered!
 3. Identify all questions from index ${subQuestionIndex} onwards that the child has successfully answered in this turn.
 4. Output their indices in the "answeredIndices" array (e.g., [0] or [0, 1]).
 5. Collect all keywords that were matched in the child's response from the expectedKeywords lists of the answered questions. Output them in the "keywordsHit" array. Matches can be semantic or word-level.

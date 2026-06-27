@@ -67,23 +67,23 @@ const TeacherAvatar = ({ state }: { state: "idle" | "speaking" | "listening" | "
   let ringColor = "border-blue-300 dark:border-blue-700";
   let pulseClass = "";
   let badgeText = "Cô Lily AI 👩‍🏫";
-  let badgeTheme = "bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-955/40 dark:text-blue-300 dark:border-blue-850";
+  let badgeTheme = "bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800";
 
   if (state === "speaking") {
     ringColor = "border-emerald-400 dark:border-emerald-600";
     pulseClass = "animate-pulse ring-4 ring-emerald-100 dark:ring-emerald-950/20";
     badgeText = "Cô Lily đang nói... 🔊";
-    badgeTheme = "bg-emerald-50 text-emerald-600 border-emerald-250 dark:bg-emerald-955/40 dark:text-emerald-350 dark:border-emerald-900";
+    badgeTheme = "bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900";
   } else if (state === "listening") {
     ringColor = "border-rose-400 dark:border-rose-600";
     pulseClass = "animate-pulse ring-4 ring-rose-100 dark:ring-rose-950/20";
     badgeText = "Cô đang nghe con nè... 🎤";
-    badgeTheme = "bg-rose-50 text-rose-600 border-rose-255 dark:bg-rose-955/40 dark:text-rose-350 dark:border-rose-900";
+    badgeTheme = "bg-rose-50 text-rose-600 border-rose-300 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900";
   } else if (state === "thinking") {
     ringColor = "border-amber-400 dark:border-amber-600";
     pulseClass = "animate-pulse ring-4 ring-amber-100 dark:ring-amber-950/20";
     badgeText = "Cô đang suy nghĩ... 🧠";
-    badgeTheme = "bg-amber-50 text-amber-600 border-amber-250 dark:bg-amber-955/40 dark:text-amber-350 dark:border-amber-900";
+    badgeTheme = "bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900";
   }
 
   return (
@@ -365,7 +365,13 @@ export default function InteractiveTest() {
     const url = `/api/tts?text=${encodeURIComponent(cleanText.trim())}&voice=${selectedVoice}`;
     if (audioRef.current) {
       audioRef.current.src = url;
-      audioRef.current.play().catch(e => console.error("Lỗi phát audio:", e));
+      audioRef.current.play().catch(e => {
+        if (e.name === "AbortError" || e.message?.includes("interrupted")) {
+          console.log("🔊 Audio play interrupted (expected due to rapid UI transitions).");
+        } else {
+          console.warn("Lỗi phát audio (Ignored):", e);
+        }
+      });
     }
   };
 
@@ -479,15 +485,11 @@ export default function InteractiveTest() {
       // Fallback variables will take place automatically
     } finally {
       setIsGenerating(false);
-      setStage("warmup");
+      setStage("picture");
       setPictureIndex(0);
       setSubQuestionIndex(0);
       setAttemptsCount(0);
       lastAskedPicIndexRef.current = null;
-      // Add slight delay to make transitions natural
-      setTimeout(() => {
-        addAiMessage("Hello! Welcome to the English test. What's your name?");
-      }, 500);
     }
   };
 
@@ -608,8 +610,12 @@ export default function InteractiveTest() {
               console.log("🎙️ Speech recognition stopped/aborted manually.");
               return;
             }
-            console.error("Speech Recognition Error Type:", e.error);
-            console.error("Speech Recognition Error Details:", e.message || "No message", e);
+            if (e.error === "network") {
+              console.warn("⚠️ Speech Recognition Network Error. Chờ kết nối lại...");
+              return;
+            }
+            console.warn("Speech Recognition Error Type:", e.error);
+            console.warn("Speech Recognition Error Details:", e.message || "No message", e);
             if (e.error === "not-allowed") {
               console.warn("⚠️ Microphone access denied or origin is not secure (requires localhost or HTTPS).");
             }
@@ -740,7 +746,8 @@ export default function InteractiveTest() {
           subQuestionIndex,
           questions: currentQuestion.questions || [],
           expectedKeywords: currentQuestion.questions?.[subQuestionIndex]?.expectedKeywords || currentQuestion.evaluationCriteria?.expectedKeywords || [],
-          attemptsCount
+          attemptsCount,
+          keywordsMentioned
         }));
       } else if (stage === "reading") {
         formData.append("context", JSON.stringify({
@@ -1413,8 +1420,8 @@ export default function InteractiveTest() {
         <main className="max-w-3xl w-full mx-auto px-3 md:px-4 mt-6 md:mt-8 flex flex-col gap-6 md:gap-8 relative z-10">
           
           {/* Satisfaction Star Rating Card */}
-          <section className="bg-white dark:bg-slate-900 rounded-3xl border-4 border-indigo-100 dark:border-indigo-850 p-4 md:p-6 shadow-md text-center w-full animate-fade-in relative z-20">
-            <h3 className="text-sm md:text-base font-black text-slate-805 dark:text-slate-100 flex items-center justify-center gap-1.5 mb-1.5 font-sans">
+          <section className="bg-white dark:bg-slate-900 rounded-3xl border-4 border-indigo-100 dark:border-indigo-800 p-4 md:p-6 shadow-md text-center w-full animate-fade-in relative z-20">
+            <h3 className="text-sm md:text-base font-black text-slate-800 dark:text-slate-100 flex items-center justify-center gap-1.5 mb-1.5 font-sans">
               <span>🌟</span> Con đánh giá độ hài lòng về bài test này nhé!
             </h3>
             <p className="text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 mb-3 font-sans">
@@ -1575,7 +1582,7 @@ export default function InteractiveTest() {
           <section className="bg-white dark:bg-slate-900 rounded-3xl border-4 border-slate-100 dark:border-slate-700 p-4 md:p-6 md:p-8 shadow-xl">
             <div className="flex flex-col sm:flex-row items-start gap-5">
               
-              <div className="shrink-0 flex sm:flex-col items-center gap-2 self-center sm:self-start bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-750 rounded-2xl p-4 w-full sm:w-28 text-center shadow-inner">
+              <div className="shrink-0 flex sm:flex-col items-center gap-2 self-center sm:self-start bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl p-4 w-full sm:w-28 text-center shadow-inner">
                 <span className="text-5xl animate-bounce" style={{ animationDuration: "2.5s" }}>
                   {overallLevelInfo.mascot}
                 </span>
@@ -1611,13 +1618,13 @@ export default function InteractiveTest() {
               Lộ trình rèn luyện nâng cao năng lực 🚀
             </h3>
             
-            <p className="text-xs text-slate-500 dark:text-slate-450 font-bold leading-relaxed mb-6">
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-bold leading-relaxed mb-6">
               Dựa trên kết quả thi đầu vào, cô giáo AI đã chuẩn hóa riêng cho con 3 bài tập nhỏ luyện tập tại nhà:
             </p>
 
             <div className="space-y-4">
               {roadmapTasks().map((task, index) => (
-                <div key={index} className="border-2 border-blue-50 dark:border-slate-800 bg-white dark:bg-slate-850 rounded-2xl p-4 flex items-start gap-3 shadow-sm hover:border-blue-200 dark:hover:border-slate-750 transition-colors">
+                <div key={index} className="border-2 border-blue-50 dark:border-slate-800 bg-white dark:bg-slate-800 rounded-2xl p-4 flex items-start gap-3 shadow-sm hover:border-blue-200 dark:hover:border-slate-700 transition-colors">
                   <span className="inline-block text-xs font-black bg-blue-100/60 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded-md mr-2 font-mono shrink-0">
                     Bài {index + 1}
                   </span>
@@ -1637,7 +1644,7 @@ export default function InteractiveTest() {
             <div className="space-y-4">
               {messages.map((msg, idx) => (
                 <div key={idx} className={`flex ${msg.role === "ai" ? "justify-start" : "justify-end"}`}>
-                  <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm font-bold shadow-sm ${msg.role === "ai" ? "bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-2 border-slate-100 dark:border-slate-750" : "bg-blue-600 dark:bg-blue-600 text-white"}`}>
+                  <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm font-bold shadow-sm ${msg.role === "ai" ? "bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-slate-50 border-2 border-slate-200 dark:border-slate-600" : "bg-blue-600 dark:bg-indigo-500 text-white"}`}>
                     <div className="text-[10px] uppercase font-black tracking-wider opacity-60 mb-1 flex items-center gap-1">
                       {msg.role === "ai" ? (
                         <><span>🤖</span> Cô giáo AI</>
@@ -1739,7 +1746,7 @@ export default function InteractiveTest() {
       {/* Header with Stage indicators */}
       <div className="bg-white dark:bg-slate-900 p-2 sm:p-3 md:p-4 shadow-md flex items-center justify-between sticky top-0 z-20 border-b dark:border-slate-700 rounded-b-3xl select-none gap-2">
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-blue-100 dark:bg-blue-955/50 flex items-center justify-center text-lg sm:text-xl shadow-inner border-2 border-blue-200">👩‍🏫</div>
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-blue-100 dark:bg-blue-950/50 flex items-center justify-center text-lg sm:text-xl shadow-inner border-2 border-blue-200">👩‍🏫</div>
           <div className="min-w-0">
             <h2 className="text-xs sm:text-sm md:text-base font-black text-slate-800 dark:text-slate-100 flex items-center gap-1">
               <span className="truncate">Cô Lily</span>
@@ -1760,7 +1767,7 @@ export default function InteractiveTest() {
               {stage === "warmup" ? "25%" : stage === "picture" ? "50%" : stage === "reading" ? "75%" : "95%"}
             </span>
           </div>
-          <div className="flex items-center gap-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 sm:h-2.5 md:h-3 border border-slate-200 dark:border-slate-650 px-0.5 overflow-hidden">
+          <div className="flex items-center gap-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 sm:h-2.5 md:h-3 border border-slate-200 dark:border-slate-600 px-0.5 overflow-hidden">
             <div 
               className="bg-gradient-to-r from-emerald-400 to-blue-500 h-1 sm:h-1.5 md:h-2 rounded-full transition-all duration-500 shadow-sm animate-pulse-slow"
               style={{ 
@@ -1786,7 +1793,7 @@ export default function InteractiveTest() {
 
       {/* Main Workspace Area — fullscreen per stage on mobile */}
       <div className="flex-1 min-h-0 overflow-hidden relative">
-        <div className="absolute inset-4 bg-white dark:bg-slate-900 rounded-3xl border-4 border-slate-150 dark:border-slate-800 shadow-md p-4 md:p-6 overflow-hidden">
+        <div className="absolute inset-4 bg-white dark:bg-slate-900 rounded-3xl border-4 border-slate-100 dark:border-slate-800 shadow-md p-4 md:p-6 overflow-hidden">
           
           {/* Grid structure: side-by-side on desktop, vertical stack on mobile */}
           <div 
@@ -1846,7 +1853,7 @@ export default function InteractiveTest() {
 
                  {/* Practice Mode Vocabulary Hints Card */}
                  {(showVocabularyHint || (interactiveMode === "practice")) && (
-                   <div className="bg-amber-50/60 dark:bg-amber-955/10 border-2 border-dashed border-amber-250 dark:border-amber-900/40 rounded-2xl p-2.5 text-left shrink-0">
+                   <div className="bg-amber-50/60 dark:bg-amber-950/10 border-2 border-dashed border-amber-200 dark:border-amber-900/40 rounded-2xl p-2.5 text-left shrink-0">
                      <div className="flex items-center gap-1.5 mb-1">
                        <span className="text-sm">💡</span>
                        <h5 className="text-[10px] font-black uppercase text-amber-700 dark:text-amber-400 font-sans">Gợi ý từ vựng cho con:</h5>
@@ -1859,8 +1866,8 @@ export default function InteractiveTest() {
                               key={kw} 
                               className={`border rounded-xl px-2.5 py-0.5 text-xs font-bold shadow-sm font-sans transition-all duration-300 ${
                                 isHit 
-                                  ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border-emerald-250 dark:border-emerald-800 scale-105" 
-                                  : "bg-white dark:bg-slate-850 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700"
+                                  ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 scale-105" 
+                                  : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700"
                               }`}
                             >
                               {kw}
@@ -1872,7 +1879,7 @@ export default function InteractiveTest() {
                  )}
 
                  {/* Simplified star counter for keywords */}
-                 <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-850 border border-slate-100 dark:border-slate-800 p-2.5 rounded-2xl shrink-0">
+                 <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800 p-2.5 rounded-2xl shrink-0">
                    <span className="text-xs font-black text-slate-500 dark:text-slate-400">⭐ Từ vựng đạt:</span>
                    <div className="flex items-center gap-1">
                      <span className="text-lg font-black text-amber-500">{keywordsMentioned.length}</span>
@@ -1888,12 +1895,12 @@ export default function InteractiveTest() {
                  {!showMcq ? (
                    // Reading Aloud slide
                    <div className="flex flex-col items-center p-1.5 min-h-0 w-full">
-                     <h3 className="font-extrabold text-emerald-805 dark:text-emerald-355 mb-2.5 flex items-center gap-2 text-sm uppercase tracking-wider">
+                     <h3 className="font-extrabold text-emerald-800 dark:text-emerald-400 mb-2.5 flex items-center gap-2 text-sm uppercase tracking-wider">
                        <span className="text-lg">📖</span>
                        Đọc to câu chuyện dưới đây cho cô giáo Lily nghe nhé:
                      </h3>
                      
-                     <div className="relative bg-amber-50 dark:bg-slate-855 border-4 border-amber-200 dark:border-slate-700 rounded-3xl p-5 md:p-6 shadow-inner w-full max-w-xl mb-2.5">
+                     <div className="relative bg-amber-50 dark:bg-slate-900 border-4 border-amber-200 dark:border-slate-700 rounded-3xl p-5 md:p-6 shadow-inner w-full max-w-xl mb-2.5">
                        <span className="absolute -top-3 -left-3 text-2xl">✨</span>
                        <span className="absolute -bottom-3 -right-3 text-2xl">🎈</span>
                        <p className="text-base md:text-lg font-bold text-slate-800 dark:text-slate-100 leading-relaxed font-sans text-center select-none whitespace-normal">
@@ -1903,14 +1910,14 @@ export default function InteractiveTest() {
 
                      {/* Practice Mode Vocabulary Hints Card */}
                      {(showVocabularyHint || (interactiveMode === "practice")) && (
-                       <div className="bg-amber-50/60 dark:bg-amber-955/10 border-2 border-dashed border-amber-250 dark:border-amber-900/40 rounded-2xl p-2.5 text-left w-full max-w-xl shrink-0">
+                       <div className="bg-amber-50/60 dark:bg-amber-950/10 border-2 border-dashed border-amber-200 dark:border-amber-900/40 rounded-2xl p-2.5 text-left w-full max-w-xl shrink-0">
                          <div className="flex items-center gap-1.5 mb-1">
                            <span className="text-sm">💡</span>
                            <h5 className="text-[10px] font-black uppercase text-amber-700 dark:text-amber-400 font-sans">Gợi ý từ vựng cho con:</h5>
                          </div>
                          <div className="flex flex-wrap gap-1.5">
                            {activeStory.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "").split(/\s+/).slice(0, 5).map((kw: string) => (
-                             <span key={kw} className="bg-white dark:bg-slate-850 text-slate-855 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-0.5 text-xs font-bold shadow-sm font-sans">
+                             <span key={kw} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-0.5 text-xs font-bold shadow-sm font-sans">
                                {kw}
                              </span>
                            ))}
@@ -1921,12 +1928,12 @@ export default function InteractiveTest() {
                  ) : (
                    // Reading MCQ slide
                    <div className="flex flex-col items-center p-2 min-h-0">
-                     <h3 className="font-extrabold text-blue-805 dark:text-blue-300 mb-4 flex items-center gap-2 text-sm uppercase tracking-wider">
+                     <h3 className="font-extrabold text-blue-800 dark:text-blue-300 mb-4 flex items-center gap-2 text-sm uppercase tracking-wider">
                        <span className="text-lg">🧩</span>
                        Đã đến giờ trả lời câu hỏi! Chọn 1 đáp án đúng:
                      </h3>
                      
-                     <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-850 border-2 border-blue-150 dark:border-slate-700 rounded-2xl p-5 shadow-sm mb-5 text-center w-full max-w-lg">
+                     <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-800 border-2 border-blue-100 dark:border-slate-700 rounded-2xl p-5 shadow-sm mb-5 text-center w-full max-w-lg">
                        <p className="text-base md:text-xl font-black text-slate-800 dark:text-slate-100">
                          {activeMcq.question}
                        </p>
@@ -1975,12 +1982,12 @@ export default function InteractiveTest() {
 
              {stage === "writing" && (
                <div className="flex-1 flex flex-col justify-center items-center min-h-0">
-                 <h3 className="font-extrabold text-indigo-805 dark:text-indigo-300 mb-4 flex items-center gap-2 text-sm uppercase tracking-wider">
+                 <h3 className="font-extrabold text-indigo-800 dark:text-indigo-300 mb-4 flex items-center gap-2 text-sm uppercase tracking-wider">
                    <span className="text-lg">✍️</span>
                    Thử thách đánh vần [{writingTaskIndex + 1}/2]
                  </h3>
 
-                 <div className="bg-white dark:bg-slate-855 border-4 border-indigo-200 dark:border-slate-700 rounded-3xl p-5 md:p-6 shadow-md w-full max-w-md flex flex-col items-center text-center">
+                 <div className="bg-white dark:bg-slate-900 border-4 border-indigo-200 dark:border-slate-700 rounded-3xl p-5 md:p-6 shadow-md w-full max-w-md flex flex-col items-center text-center">
                    <div className="relative w-20 h-20 md:w-24 md:h-24 rounded-full bg-indigo-50 dark:bg-slate-800 border-2 border-indigo-200 flex items-center justify-center text-4xl md:text-5xl mb-4 shadow-inner">
                      <span className="absolute inset-0 rounded-full border-4 border-dashed border-indigo-300/40 animate-spin" style={{ animationDuration: "12s" }} />
                      <span className="animate-bounce" style={{ animationDuration: "2.5s" }}>
@@ -1988,7 +1995,7 @@ export default function InteractiveTest() {
                      </span>
                    </div>
                    
-                   <p className="text-slate-750 dark:text-slate-200 font-extrabold text-sm md:text-base leading-relaxed mb-4 bg-slate-50 dark:bg-slate-800 px-4 py-2.5 rounded-2xl border border-slate-100 dark:border-slate-750 w-full text-center">
+                   <p className="text-slate-700 dark:text-slate-200 font-extrabold text-sm md:text-base leading-relaxed mb-4 bg-slate-50 dark:bg-slate-800 px-4 py-2.5 rounded-2xl border border-slate-100 dark:border-slate-700 w-full text-center">
                      Cô Lily hỏi: &quot;{activeSpelling[writingTaskIndex].prompt}&quot;
                    </p>
 
@@ -2080,9 +2087,9 @@ export default function InteractiveTest() {
                    {writingSubmitted && (
                      <div className="mt-4 animate-bounce-subtle text-xs font-black">
                        {selectedLetters.map(t => t.letter).join("").toLowerCase() === activeSpelling[writingTaskIndex].correctWord.toLowerCase() ? (
-                         <span className="text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 px-3 py-1.5 rounded-full border border-emerald-250">🎉 Xuất sắc! Con đã ghép đúng rồi!</span>
+                         <span className="text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 px-3 py-1.5 rounded-full border border-emerald-200">🎉 Xuất sắc! Con đã ghép đúng rồi!</span>
                        ) : (
-                         <span className="text-rose-500 dark:text-rose-450 bg-rose-50 dark:bg-rose-950/20 px-3 py-1.5 rounded-full border border-rose-250">✍️ Gần đúng rồi, cô đang chấm điểm nhé!</span>
+                         <span className="text-rose-500 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/20 px-3 py-1.5 rounded-full border border-rose-200">✍️ Gần đúng rồi, cô đang chấm điểm nhé!</span>
                        )}
                      </div>
                    )}
@@ -2097,7 +2104,7 @@ export default function InteractiveTest() {
               {/* Dialogue exchange box (auto scroll) */}
               <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0 bg-slate-50 dark:bg-slate-950/40 rounded-2xl border border-slate-100 dark:border-slate-800">
                 {messages.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full text-center text-slate-405 dark:text-slate-600 gap-3 py-10">
+                  <div className="flex flex-col items-center justify-center h-full text-center text-slate-400 dark:text-slate-600 gap-3 py-10">
                     <span className="text-4xl animate-pulse">👋</span>
                     <p className="text-xs font-black">Hãy nói gì đó để bắt đầu trò chuyện cùng cô Lily nhé!</p>
                   </div>
@@ -2105,20 +2112,20 @@ export default function InteractiveTest() {
                   messages.map((msg, idx) => (
                     <div key={idx} className={`flex items-start gap-2.5 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                       {msg.role === "ai" && (
-                        <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-955 flex items-center justify-center border border-blue-200 shrink-0 text-sm select-none shadow-sm">
+                        <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-950 flex items-center justify-center border border-blue-200 shrink-0 text-sm select-none shadow-sm">
                           👩‍🏫
                         </div>
                       )}
                       <div className={`relative max-w-[80%] lg:max-w-[88%] px-4 py-3 rounded-2xl text-sm md:text-base font-black shadow-sm ${
                         msg.role === "ai" 
-                          ? "bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-750 text-slate-800 dark:text-slate-100 rounded-tl-none" 
-                          : "bg-blue-500 text-white rounded-tr-none"
+                          ? "bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-900 dark:text-slate-50 rounded-tl-none" 
+                          : "bg-blue-600 dark:bg-indigo-500 text-white rounded-tr-none"
                       }`}>
                        {msg.role === "ai" && (
-                         <div className="absolute left-[-6px] top-3 w-0 h-0 border-t-[8px] border-t-white dark:border-t-slate-800 border-l-[6px] border-l-transparent" />
+                         <div className="absolute left-[-6px] top-3 w-0 h-0 border-t-[8px] border-t-slate-50 dark:border-t-slate-700 border-l-[6px] border-l-transparent" />
                        )}
                        {msg.role === "user" && (
-                         <div className="absolute right-[-6px] top-3 w-0 h-0 border-t-[8px] border-t-blue-500 border-r-[6px] border-r-transparent" />
+                         <div className="absolute right-[-6px] top-3 w-0 h-0 border-t-[8px] border-t-blue-600 dark:border-t-indigo-500 border-r-[6px] border-r-transparent" />
                        )}
                        <p className="whitespace-pre-line">{msg.content}</p>
                      </div>
@@ -2133,10 +2140,10 @@ export default function InteractiveTest() {
                
                {isProcessing && (
                  <div className="flex justify-start items-start gap-2.5">
-                   <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-955 flex items-center justify-center border border-blue-200 shrink-0 text-sm select-none shadow-sm">
+                   <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-950 flex items-center justify-center border border-blue-200 shrink-0 text-sm select-none shadow-sm">
                      👩‍🏫
                    </div>
-                   <div className="bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 p-4 rounded-3xl rounded-tl-none shadow-sm flex items-center gap-2 text-sm font-black text-slate-555 dark:text-slate-400">
+                   <div className="bg-slate-50 dark:bg-slate-700 border-2 border-slate-200 dark:border-slate-600 p-4 rounded-3xl rounded-tl-none shadow-sm flex items-center gap-2 text-sm font-black text-slate-700 dark:text-slate-200">
                      <div className="flex gap-0.5">
                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: "0s" }} />
                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }} />
@@ -2156,25 +2163,25 @@ export default function InteractiveTest() {
       </div>
 
       {/* Sleek, Space-efficient Bottom Control Panel */}
-      <div className="bg-white dark:bg-slate-900 border-t-2 border-slate-150 dark:border-slate-800 p-3 sm:p-4 rounded-t-3xl shadow-lg shrink-0 select-none">
+      <div className="bg-white dark:bg-slate-900 border-t-2 border-slate-100 dark:border-slate-800 p-3 sm:p-4 rounded-t-3xl shadow-lg shrink-0 select-none">
         <div className="max-w-4xl mx-auto flex flex-col gap-2">
           
           <div className="flex items-center gap-3 sm:gap-4 w-full">
             {/* Left/Center Area: Status & Transcript (Unified) */}
-            <div className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-150 dark:border-slate-800 px-4 py-2.5 rounded-2xl min-h-[56px] flex flex-col justify-center overflow-hidden">
+            <div className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 px-4 py-2.5 rounded-2xl min-h-[56px] flex flex-col justify-center overflow-hidden">
               {isRecording ? (
                 <div className="flex items-center gap-3 w-full">
                   <Soundwave />
                   <div className="flex-1 text-left min-w-0">
                     <p className="text-[9px] sm:text-[10px] font-black text-rose-500 uppercase tracking-wider mb-0.5 animate-pulse">Con đang nói:</p>
-                    <p className="text-xs sm:text-sm font-black text-slate-700 dark:text-slate-350 truncate">
+                    <p className="text-xs sm:text-sm font-black text-slate-700 dark:text-slate-300 truncate">
                       {realtimeTranscript || "Hãy nói đi con, cô đang nghe nè... 🎤"}
                     </p>
                   </div>
                 </div>
               ) : (
                 <div className="text-left w-full">
-                  <p className="text-xs sm:text-sm font-black text-slate-700 dark:text-slate-350 leading-snug">
+                  <p className="text-xs sm:text-sm font-black text-slate-700 dark:text-slate-300 leading-snug">
                     {stage === "writing" 
                       ? "Kéo thả hoặc bấm chữ cái để ghép từ ở trên nhé! ✍️" 
                       : showMcq 
@@ -2247,7 +2254,7 @@ export default function InteractiveTest() {
                 value={devInputText}
                 onChange={(e) => setDevInputText(e.target.value)}
                 placeholder="Giả lập lời nói của bé (Dev)..."
-                className="flex-1 bg-slate-100 dark:bg-slate-800 border border-slate-350 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex-1 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <button
                 type="submit"
