@@ -34,6 +34,10 @@ export async function POST(req: NextRequest) {
         language: "en",
       });
       transcribedText = (transcription.text || "").trim();
+      
+      // Clean up Whisper internal/special token hallucinations (like <|jv|>, <|nn|>, etc.)
+      transcribedText = transcribedText.replace(/<\|.*?\|>/g, "").trim();
+      
       console.log(`📝 [Groq Whisper] Transcribed text: "${transcribedText}"`);
     }
 

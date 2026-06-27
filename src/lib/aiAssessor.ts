@@ -27,7 +27,8 @@ export async function transcribeAudio(audioBuffer: Buffer): Promise<string> {
     file: file,
     language: "en",
   });
-  return (transcription.text || "").trim();
+  const text = (transcription.text || "").trim();
+  return text.replace(/<\|.*?\|>/g, "").trim();
 }
 
 // ─── Writing Grader ───────────────────────────────────────────────────────────
