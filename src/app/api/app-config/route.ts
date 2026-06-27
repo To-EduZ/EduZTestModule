@@ -13,8 +13,6 @@ export async function GET(req: NextRequest) {
         singletonId: "global_config",
         interactiveMode: "random",
         interactiveFixedTestId: "",
-        yleMode: "random",
-        yleFixedTestId: "",
       });
     }
       

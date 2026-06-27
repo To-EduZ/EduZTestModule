@@ -49,8 +49,6 @@ export async function GET(req: NextRequest) {
             singletonId: "global_config",
             interactiveMode: "random",
             interactiveFixedTestId: "",
-            yleMode: "random",
-            yleFixedTestId: "",
           });
         }
 
@@ -128,7 +126,7 @@ export async function GET(req: NextRequest) {
         [
           {
             role: "system",
-            content: `Bạn là chuyên gia thiết kế đề thi tiếng Anh trẻ em (Cambridge YLE examiner) cực kỳ chuyên nghiệp và sáng tạo.
+            content: `Bạn là chuyên gia thiết kế đề thi tiếng Anh trẻ em cực kỳ chuyên nghiệp và sáng tạo.
 Thiết kế một bộ đề thi động hoàn toàn bằng Tiếng Anh, phù hợp với trình độ Movers (A1), liên kết chủ đề hai bức tranh có các từ khóa: [${themeWords.join(", ")}].
 
 Yêu cầu từng thành phần:
@@ -158,7 +156,7 @@ Lưu ý quan trọng về JSON:
           },
           {
             role: "user",
-            content: `Từ khóa chủ đề hai bức tranh: [${themeWords.join(", ")}]. Hãy sinh bộ đề thi độc quyền chuẩn YLE ngay lập tức!`,
+            content: `Từ khóa chủ đề hai bức tranh: [${themeWords.join(", ")}]. Hãy sinh bộ đề thi độc quyền ngay lập tức!`,
           },
         ],
         { maxTokens: 1024, responseFormat: "json_object", temperature: 0.8, useAdaptiveModels: true }

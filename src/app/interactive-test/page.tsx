@@ -32,8 +32,8 @@ interface Message {
   audioUrl?: string;
 }
 
-// Custom YLE Shield SVG Component
-const YleShield = ({ filled }: { filled: boolean }) => (
+// Custom Skill Shield SVG Component
+const SkillShield = ({ filled }: { filled: boolean }) => (
   <svg 
     className={`w-6 h-8 drop-shadow-sm transition-all duration-300 ${filled ? "text-amber-500 fill-amber-400 scale-110 animate-bounce-subtle" : "text-slate-200 fill-slate-100"}`} 
     viewBox="0 0 24 30"
@@ -656,6 +656,55 @@ export default function InteractiveTest() {
       hesitationTimerRef.current = null;
     }
   }
+  // Trigger silent message when picture index changes to 1
+  useEffect(() => {
+    if (stage === "picture" && pictureIndex === 1 && currentQuestion && messages.length > 0) {
+      // Check if we just transitioned by looking at the last message
+      const lastMsg = messages[messages.length - 1];
+      // When we transition, we rename previous picture messages to "intro"
+      if (lastMsg && lastMsg.stage === "intro") {
+        // Prevent double firing if there's already a picture message
+        const hasPicMessages = messages.some(m => m.stage === "picture");
+        if (!hasPicMessages) {
+          sendSilentTransitionMessage();
+        }
+      }
+    }
+  }, [pictureIndex, stage, currentQuestion, messages]);
+
+  const sendSilentTransitionMessage = async () => {
+    setIsProcessing(true);
+    try {
+      const formData = new FormData();
+      formData.append("text", "[NEW_PICTURE]");
+      formData.append("stage", "picture");
+      formData.append("mode", interactiveMode);
+      formData.append("chatHistory", JSON.stringify([]));
+      formData.append("context", JSON.stringify({
+        pictureIndex: 1,
+        subQuestionIndex: 0,
+        questions: currentQuestion.questions || [],
+        expectedKeywords: currentQuestion.questions?.[0]?.expectedKeywords || currentQuestion.evaluationCriteria?.expectedKeywords || [],
+        attemptsCount: 0
+      }));
+
+      const isDevMode = typeof window !== "undefined" && localStorage.getItem("dev_mode_enabled") === "true";
+      const res = await fetch("/api/interactive-chat", {
+        method: "POST",
+        headers: isDevMode ? { "x-develop-mode": "true" } : {},
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        addAiMessage(data.aiResponse);
+      }
+    } catch (err) {
+      console.error("Silent transition failed:", err);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   async function handleAudioSubmission(audioBlob: Blob) {
     setIsProcessing(true);
@@ -1143,7 +1192,7 @@ export default function InteractiveTest() {
     }
   };
 
-  // Convert Score to YLE shields (1 to 5)
+  // Convert Score to shields (1 to 5)
   const getShieldsCount = (score: number) => {
     if (score >= 90) return 5;
     if (score >= 75) return 4;
@@ -1221,9 +1270,22 @@ export default function InteractiveTest() {
         const dataUrl = await toPng(resultsRef.current, { cacheBust: true, pixelRatio: 2 });
         const pdf = new jsPDF("p", "mm", "a4");
         const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = (resultsRef.current.offsetHeight * pdfWidth) / resultsRef.current.offsetWidth;
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const imgHeight = (resultsRef.current.offsetHeight * pdfWidth) / resultsRef.current.offsetWidth;
         
-        pdf.addImage(dataUrl, "PNG", 0, 0, pdfWidth, pdfHeight);
+        let heightLeft = imgHeight;
+        let position = 0;
+
+        pdf.addImage(dataUrl, "PNG", 0, position, pdfWidth, imgHeight);
+        heightLeft -= pageHeight;
+
+        while (heightLeft >= 0) {
+          position = heightLeft - imgHeight; // shift image up
+          pdf.addPage();
+          pdf.addImage(dataUrl, "PNG", 0, position, pdfWidth, imgHeight);
+          heightLeft -= pageHeight;
+        }
+        
         pdf.save(`Ket_Qua_Test_${kidName}_${new Date().getTime()}.pdf`);
       } catch (err) {
         console.error("Lỗi xuất PDF:", err);
@@ -1404,7 +1466,7 @@ export default function InteractiveTest() {
             
             <span className="bg-blue-50 text-blue-600 text-xs font-black uppercase tracking-wider px-4 py-1.5 rounded-full border border-blue-200 inline-flex items-center gap-1.5 mb-4 shadow-sm">
               <Award className="w-3.5 h-3.5 text-blue-500 fill-blue-100" />
-              Chứng Nhận Năng Lực Quốc Tế Cambridge YLE
+              Chứng Nhận Năng Lực Tiếng Anh
             </span>
 
             <h2 className="text-2xl md:text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tight">
@@ -1446,7 +1508,7 @@ export default function InteractiveTest() {
               </div>
             </div>
 
-            {/* YLE Shields Matrix Grid */}
+            {/* Skills Shields Matrix Grid */}
             <div className="bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-600 rounded-3xl p-4 md:p-6 shadow-inner mt-4 md:mt-6">
               <h3 className="text-xs md:text-sm font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4 md:mb-6">
                 Đánh giá theo 4 kỹ năng ngôn ngữ
@@ -1461,7 +1523,7 @@ export default function InteractiveTest() {
                   </div>
                   <div className="flex gap-1">
                     {Array.from({ length: 5 }).map((_, i) => (
-                      <YleShield key={i} filled={i < getShieldsCount(scores.speaking)} />
+                      <SkillShield key={i} filled={i < getShieldsCount(scores.speaking)} />
                     ))}
                   </div>
                 </div>
@@ -1474,7 +1536,7 @@ export default function InteractiveTest() {
                   </div>
                   <div className="flex gap-1">
                     {Array.from({ length: 5 }).map((_, i) => (
-                      <YleShield key={i} filled={i < getShieldsCount(scores.listening)} />
+                      <SkillShield key={i} filled={i < getShieldsCount(scores.listening)} />
                     ))}
                   </div>
                 </div>
@@ -1487,7 +1549,7 @@ export default function InteractiveTest() {
                   </div>
                   <div className="flex gap-1">
                     {Array.from({ length: 5 }).map((_, i) => (
-                      <YleShield key={i} filled={i < getShieldsCount(scores.reading)} />
+                      <SkillShield key={i} filled={i < getShieldsCount(scores.reading)} />
                     ))}
                   </div>
                 </div>
@@ -1500,7 +1562,7 @@ export default function InteractiveTest() {
                   </div>
                   <div className="flex gap-1">
                     {Array.from({ length: 5 }).map((_, i) => (
-                      <YleShield key={i} filled={i < getShieldsCount(scores.writing)} />
+                      <SkillShield key={i} filled={i < getShieldsCount(scores.writing)} />
                     ))}
                   </div>
                 </div>
@@ -1561,6 +1623,29 @@ export default function InteractiveTest() {
                   </span>
                   <div className="text-sm font-extrabold leading-relaxed text-slate-700 dark:text-slate-200">
                     {task}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* Chat Transcript Section */}
+          <section className="bg-white dark:bg-slate-900 rounded-3xl border-4 border-slate-100 dark:border-slate-700 p-4 md:p-6 md:p-8 shadow-xl mt-6">
+            <h3 className="text-xl font-black text-slate-800 dark:text-slate-100 flex items-center gap-2 mb-4 border-b dark:border-slate-800 pb-4">
+              💬 Lịch sử trò chuyện với cô giáo
+            </h3>
+            <div className="space-y-4">
+              {messages.map((msg, idx) => (
+                <div key={idx} className={`flex ${msg.role === "ai" ? "justify-start" : "justify-end"}`}>
+                  <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm font-bold shadow-sm ${msg.role === "ai" ? "bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-2 border-slate-100 dark:border-slate-750" : "bg-blue-600 dark:bg-blue-600 text-white"}`}>
+                    <div className="text-[10px] uppercase font-black tracking-wider opacity-60 mb-1 flex items-center gap-1">
+                      {msg.role === "ai" ? (
+                        <><span>🤖</span> Cô giáo AI</>
+                      ) : (
+                        <><span>👤</span> Học viên {kidName}</>
+                      )}
+                    </div>
+                    {msg.content}
                   </div>
                 </div>
               ))}
@@ -1737,7 +1822,7 @@ export default function InteractiveTest() {
                      {/* Cambridge shield trackers */}
                      <div className="flex gap-0.5">
                        {Array.from({ length: currentQuestion.questions?.length || 5 }).map((_, i) => (
-                         <YleShield key={i} filled={i <= subQuestionIndex} />
+                         <SkillShield key={i} filled={i <= subQuestionIndex} />
                        ))}
                      </div>
                    </h3>
@@ -1856,7 +1941,7 @@ export default function InteractiveTest() {
                          let optionClass = "bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-blue-400 dark:hover:border-blue-500 hover:translate-y-[-2px]";
                          if (mcqAnswered) {
                            if (isCorrectOption) {
-                             optionClass = "bg-emerald-100 dark:bg-emerald-950/50 border-emerald-500 text-emerald-800 dark:text-emerald-300 scale-[1.02] shadow-md z-10";
+                             optionClass = "bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/60 dark:to-teal-950/60 border-emerald-500 border-l-4 border-l-emerald-500 text-emerald-800 dark:text-emerald-300 scale-[1.04] shadow-lg shadow-emerald-500/20 ring-4 ring-emerald-300/50 z-10";
                            } else if (isSelected) {
                              optionClass = "bg-rose-100 dark:bg-rose-950/50 border-rose-400 text-rose-700 dark:text-rose-300 opacity-60";
                            } else {

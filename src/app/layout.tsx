@@ -10,8 +10,8 @@ const nunito = Nunito({
 });
 
 export const metadata: Metadata = {
-  title: "Đánh Giá & Luyện Nói Tiếng Anh Cambridge - KidSpeak 🚀",
-  description: "Web App luyện kỹ năng nói Tiếng Anh theo chuẩn Cambridge (Starters, Movers, Flyers) với AI chấm điểm thông minh dành cho trẻ em 6-11 tuổi.",
+  title: "Đánh Giá & Luyện Nói Tiếng Anh - KidSpeak 🚀",
+  description: "Web App luyện kỹ năng nói Tiếng Anh với AI chấm điểm thông minh dành cho trẻ em 6-11 tuổi.",
 };
 
 export default function RootLayout({

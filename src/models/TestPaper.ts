@@ -1,9 +1,9 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
 
 export interface ITestPaper extends Document {
-  id: string; // Unique test identifier (e.g., 'TEST_YLE_01')
-  name: string; // "Đề thi Starters YLE số 1"
-  moduleType: "interactive" | "yle";
+  id: string; // Unique test identifier (e.g., 'TEST_01')
+  name: string; // "Đề thi Starters số 1"
+  moduleType: "interactive";
   status: "draft" | "published";
   questionIds: string[]; // List of question IDs in this test
   createdAt: Date;
@@ -14,7 +14,7 @@ const TestPaperSchema: Schema<ITestPaper> = new Schema(
   {
     id: { type: String, required: true, unique: true },
     name: { type: String, required: true },
-    moduleType: { type: String, enum: ["interactive", "yle"], required: true },
+    moduleType: { type: String, enum: ["interactive"], required: true },
     status: { type: String, enum: ["draft", "published"], default: "draft" },
     questionIds: { type: [String], default: [] },
   },

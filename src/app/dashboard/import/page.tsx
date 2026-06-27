@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef } from "react";
 import Link from "next/link";
-import YLEImport from "./components/YLEImport";
+
 import TestPaperManager from "./components/TestPaperManager";
 import {
   ArrowLeft,
@@ -65,7 +65,7 @@ interface SubQuestionInput {
 }
 
 export default function CambridgeImportPage() {
-  const [activeTab, setActiveTab] = useState<"interactive" | "yle" | "test-papers">("interactive");
+  const [activeTab, setActiveTab] = useState<"interactive" | "test-papers">("interactive");
   
   // Questions list state
   const [questions, setQuestions] = useState<QuestionData[]>([]);
@@ -813,16 +813,7 @@ export default function CambridgeImportPage() {
             >
               🎤 Bài Test Tương Tác (Speaking)
             </button>
-            <button 
-              onClick={() => setActiveTab("yle")}
-              className={`px-4 md:px-6 py-2 rounded-xl text-xs md:text-sm font-black transition-all ${
-                activeTab === "yle" 
-                  ? "bg-white dark:bg-slate-700 shadow-md text-amber-600 dark:text-amber-400 scale-105" 
-                  : "text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              🏆 Cambridge YLE (MCQ)
-            </button>
+
             <button 
               onClick={() => setActiveTab("test-papers")}
               className={`px-4 md:px-6 py-2 rounded-xl text-xs md:text-sm font-black transition-all ${
@@ -839,9 +830,7 @@ export default function CambridgeImportPage() {
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-6xl w-full mx-auto p-4 md:p-6 animate-slide-up mt-4">
-        {activeTab === "yle" ? (
-          <YLEImport />
-        ) : activeTab === "test-papers" ? (
+        {activeTab === "test-papers" ? (
           <TestPaperManager />
         ) : (
           <div className="space-y-6">

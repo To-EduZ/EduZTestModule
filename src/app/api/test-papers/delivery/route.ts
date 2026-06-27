@@ -3,16 +3,16 @@ import { connectToDatabase } from "@/lib/mongodb";
 import AppConfig from "@/models/AppConfig";
 import TestPaper from "@/models/TestPaper";
 import Question from "@/models/Question";
-import CambridgeQuestion from "@/models/CambridgeQuestion";
+
 
 export async function GET(req: NextRequest) {
   try {
     await connectToDatabase();
     
     const { searchParams } = new URL(req.url);
-    const moduleType = searchParams.get("moduleType"); // "interactive" or "yle"
+    const moduleType = searchParams.get("moduleType"); // "interactive"
     
-    if (!moduleType || (moduleType !== "interactive" && moduleType !== "yle")) {
+    if (!moduleType || moduleType !== "interactive") {
       return NextResponse.json({ success: false, error: "Invalid moduleType" }, { status: 400 });
     }
 
@@ -22,13 +22,12 @@ export async function GET(req: NextRequest) {
         singletonId: "global_config",
         interactiveMode: "random",
         interactiveFixedTestId: "",
-        yleMode: "random",
-        yleFixedTestId: "",
+
       });
     }
 
-    const mode = moduleType === "interactive" ? config.interactiveMode : config.yleMode;
-    const fixedId = moduleType === "interactive" ? config.interactiveFixedTestId : config.yleFixedTestId;
+    const mode = config.interactiveMode;
+    const fixedId = config.interactiveFixedTestId;
 
     let targetPaper = null;
 
@@ -43,24 +42,16 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    let questions = [];
+    let questions: any[] = [];
 
     if (targetPaper && targetPaper.questionIds && targetPaper.questionIds.length > 0) {
       if (moduleType === "interactive") {
         questions = await Question.find({ id: { $in: targetPaper.questionIds } }).lean();
-      } else {
-        questions = await CambridgeQuestion.find({ id: { $in: targetPaper.questionIds } })
-          .sort({ section: 1, part: 1, taskNumber: 1, questionNumberInTask: 1 })
-          .lean();
       }
     } else {
       // Fallback: If no test paper found, return ALL questions (legacy behavior)
       if (moduleType === "interactive") {
         questions = await Question.find({}).lean();
-      } else {
-        questions = await CambridgeQuestion.find({})
-          .sort({ section: 1, part: 1, taskNumber: 1, questionNumberInTask: 1 })
-          .lean();
       }
     }
 

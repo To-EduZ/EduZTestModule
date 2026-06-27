@@ -7,8 +7,7 @@ export interface IAppConfig extends Document {
   interactiveMode: "fixed" | "random";
   interactiveFixedTestId: string; // ID of the TestPaper to show if mode is fixed
   
-  yleMode: "fixed" | "random";
-  yleFixedTestId: string;
+
 }
 
 const AppConfigSchema: Schema<IAppConfig> = new Schema(
@@ -17,8 +16,7 @@ const AppConfigSchema: Schema<IAppConfig> = new Schema(
     interactiveMode: { type: String, enum: ["fixed", "random"], default: "random" },
     interactiveFixedTestId: { type: String, default: "" },
     
-    yleMode: { type: String, enum: ["fixed", "random"], default: "random" },
-    yleFixedTestId: { type: String, default: "" },
+
   },
   { timestamps: true }
 );

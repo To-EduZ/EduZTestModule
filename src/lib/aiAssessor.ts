@@ -42,7 +42,7 @@ export async function gradeWriting(
       [
         {
           role: "system",
-          content: `You are a Cambridge YLE ${level} writing examiner. Score the student's answer honestly using YLE Writing Band Descriptors:
+          content: `You are an English assessment ${level} writing examiner. Score the student's answer honestly using standard Writing Band Descriptors:
 - Band 5 (85-100): Virtually no errors. Meaning crystal clear.
 - Band 4 (65-84): Very few minor errors. Meaning completely clear. isCorrect = true from Band 4 up.
 - Band 3 (45-64): Some errors but meaning generally clear.
@@ -72,7 +72,7 @@ Return ONLY valid JSON: {"score": integer 0-100, "isCorrect": boolean (true if B
       isCorrect: Boolean(parsed.isCorrect),
     };
   } catch (err) {
-    // Fallback: character overlap ratio → YLE band
+    // Fallback: character overlap ratio → Band
     const cleanUser = userAnswer.toLowerCase().replace(/[^a-z]/g, "");
     const cleanPrompt = prompt.toLowerCase().replace(/[^a-z]/g, "");
     if (!cleanPrompt.length) return { score: 0, isCorrect: false };

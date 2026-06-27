@@ -180,7 +180,7 @@ export default function Dashboard() {
           </div>
         </section>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="flex justify-center w-full max-w-2xl mx-auto">
           {/* Interactive Test */}
           <section className="relative overflow-hidden backdrop-blur-md bg-white/70 dark:bg-slate-900/70 border border-slate-200/50 dark:border-slate-800 rounded-3xl p-6 shadow-lg flex flex-col justify-between group hover:-translate-y-1 transition-all">
             <div>
@@ -206,34 +206,7 @@ export default function Dashboard() {
               </button>
             </div>
           </section>
-
-          {/* Cambridge YLE Test */}
-          <section className="relative overflow-hidden backdrop-blur-md bg-white/70 dark:bg-slate-900/70 border border-slate-200/50 dark:border-slate-800 rounded-3xl p-6 shadow-lg flex flex-col justify-between group hover:-translate-y-1 transition-all">
-            <div>
-              <span className="bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] md:text-xs font-black uppercase tracking-wider px-3.5 py-1.5 rounded-full border border-amber-500/20 inline-flex items-center gap-1.5 mb-4 shadow-sm">
-                <BarChart3 className="w-3.5 h-3.5" />
-                Cambridge Young Learners
-              </span>
-              <h3 className="text-xl md:text-2xl font-black text-slate-850 dark:text-slate-100 leading-tight mb-2">
-                Bài Test Cambridge YLE 🏆
-              </h3>
-              <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 leading-relaxed mb-6">
-                Đánh giá trình độ theo chuẩn Cambridge với 30 câu hỏi (Language Use + Listening). Xếp loại CEFR từ Pre-A1 đến B1.
-              </p>
-            </div>
-            
-            <div className="w-full relative z-10">
-              <button 
-                onClick={() => handleStartTest("/cambridge-test")}
-                className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white rounded-2xl px-6 py-4 font-black tracking-wider uppercase flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 transition-all shadow-lg hover:shadow-amber-500/20 text-sm cursor-pointer border-b-4 border-orange-800"
-              >
-                <BarChart3 className="w-4 h-4 animate-pulse" />
-                Mở Bài Test Cambridge
-              </button>
-            </div>
-          </section>
         </div>
-
       </main>
 
       {/* Hidden Settings Button (low opacity, bottom right) */}

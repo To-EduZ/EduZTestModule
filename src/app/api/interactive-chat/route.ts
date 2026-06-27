@@ -86,7 +86,21 @@ Follow this exact flow:
       const questions = context.questions || [];
       const attemptsCount = typeof context.attemptsCount === "number" ? context.attemptsCount : 0;
 
-      stageInstructions = `
+      if (transcribedText === "[NEW_PICTURE]") {
+        stageInstructions = `
+We are in the Picture Description/Differences stage for Picture ${pictureIndex + 1}.
+Here is the questions array for this picture:
+${JSON.stringify(questions)}
+
+The UI has just transitioned to this new picture.
+Your task:
+1. Greet the new picture enthusiastically (e.g., "Look at this new picture!").
+2. Ask the FIRST question in the questions array: "${questions[0]?.examinerScript || "What do you see?"}".
+3. Set "stageComplete" to false.
+4. Set "nextSubQuestionIndex" to 0.
+`;
+      } else {
+        stageInstructions = `
 We are in the Picture Description/Differences stage for Picture ${pictureIndex + 1}.
 Here is the questions array for this picture:
 ${JSON.stringify(questions)}
@@ -117,6 +131,7 @@ Your tasks:
    - If stageComplete is true:
      - If pictureIndex is 0: the response MUST end with exactly: "Great job with the first picture! Now let's look at a second picture."
      - If pictureIndex is 1: the response MUST end with exactly: "Excellent! You did a great job with both pictures. Now, let's read a short story together."`;
+      }
     } else if (stage === "reading") {
       stageInstructions = `
 The child has finished reading the story aloud.
@@ -131,7 +146,7 @@ The test is ending.
 3. Set "stageComplete" to true.`;
     }
 
-    const geminiPrompt = `You are a friendly, encouraging Cambridge YLE (Young Learners English) examiner.
+    const geminiPrompt = `You are a friendly, encouraging AI English teacher for young learners.
 Your job is to talk to a primary student (6-10 years old) in simple English, using short sentences (1-2 sentences) and fun emojis.
 
 Current stage of the exam: "${stage}"

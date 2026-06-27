@@ -121,9 +121,22 @@ export default function InteractiveDashboard() {
         const dataUrl = await toPng(resultsRef.current!, { cacheBust: true, pixelRatio: 2 });
         const pdf = new jsPDF("p", "mm", "a4");
         const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = (resultsRef.current!.offsetHeight * pdfWidth) / resultsRef.current!.offsetWidth;
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const imgHeight = (resultsRef.current!.offsetHeight * pdfWidth) / resultsRef.current!.offsetWidth;
         
-        pdf.addImage(dataUrl, "PNG", 0, 0, pdfWidth, pdfHeight);
+        let heightLeft = imgHeight;
+        let position = 0;
+
+        pdf.addImage(dataUrl, "PNG", 0, position, pdfWidth, imgHeight);
+        heightLeft -= pageHeight;
+
+        while (heightLeft >= 0) {
+          position = heightLeft - imgHeight; // shift image up
+          pdf.addPage();
+          pdf.addImage(dataUrl, "PNG", 0, position, pdfWidth, imgHeight);
+          heightLeft -= pageHeight;
+        }
+
         pdf.save(`Chi_Tiet_Test_${selectedSession.kidName}_${new Date().getTime()}.pdf`);
       } catch (err) {
         console.error("Lỗi xuất PDF:", err);
@@ -427,7 +440,7 @@ export default function InteractiveDashboard() {
                     <th className="py-4.5 px-6">Học sinh</th>
                     <th className="py-4.5 px-6">Tuổi</th>
                     <th className="py-4.5 px-6">Điểm TB</th>
-                    <th className="py-4.5 px-6">Trình độ YLE</th>
+                    <th className="py-4.5 px-6">Trình độ đánh giá</th>
                     <th className="py-4.5 px-6 text-center">Bé đánh giá</th>
                     <th className="py-4.5 px-6 text-right">Chi tiết</th>
                   </tr>
@@ -546,13 +559,13 @@ export default function InteractiveDashboard() {
                 </div>
               </div>
 
-              {/* Star Rating & YLE Certificate Level Display */}
+              {/* Star Rating & Certificate Level Display */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Level Badge */}
                 <div className="bg-indigo-50/50 dark:bg-indigo-950/10 border border-indigo-150 dark:border-indigo-900/50 rounded-2xl p-4 flex items-center gap-3">
                   <span className="text-3xl">🏆</span>
                   <div>
-                    <span className="text-[10px] font-black text-indigo-405 uppercase tracking-wider block">Trình độ Cambridge</span>
+                    <span className="text-[10px] font-black text-indigo-405 uppercase tracking-wider block">Trình độ đánh giá</span>
                     <span className="text-base font-black text-slate-805 dark:text-white">{selectedSession.overallLevel}</span>
                   </div>
                 </div>
