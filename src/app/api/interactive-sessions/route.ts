@@ -18,6 +18,8 @@ export async function POST(req: NextRequest) {
       chatHistory,
       overallLevel,
       userId,
+      testCode,
+      testPaperId,
     } = body;
 
     const { isFallback } = await connectToDatabase();
@@ -46,6 +48,8 @@ export async function POST(req: NextRequest) {
 
     const sessionData = {
       userId: userId || DEFAULT_USER_ID,
+      testCode: testCode || "",
+      testPaperId: testPaperId || "",
       kidName: finalKidName,
       kidAge: Number(finalKidAge),
       testKidName: kidName || "Con",

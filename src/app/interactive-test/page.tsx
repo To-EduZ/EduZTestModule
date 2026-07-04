@@ -4,7 +4,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { 
   Mic, Square, Loader2, PlayCircle, Send, Image as ImageIcon,
   Star, Award, Sparkles, Volume2, BookOpen, PenTool, CheckCircle2, 
-  XCircle, ChevronRight, Home, ArrowRight, Trophy, Shield, RefreshCw, Compass, RotateCcw, Download, FileText, Share2
+  XCircle, ChevronRight, Home, ArrowRight, Trophy, Shield, RefreshCw, Compass, RotateCcw, Download, FileText, Share2,
+  AlertCircle
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -216,6 +217,14 @@ export default function InteractiveTest() {
   const [dynamicStory, setDynamicStory] = useState("");
   const [dynamicMcq, setDynamicMcq] = useState<any>(null);
   const [dynamicSpelling, setDynamicSpelling] = useState<any[]>([]);
+
+  // Test code and sections states
+  const [testCodeInput, setTestCodeInput] = useState("");
+  const [activeTestCode, setActiveTestCode] = useState("");
+  const [activeTestPaperId, setActiveTestPaperId] = useState("");
+  const [testPaperSections, setTestPaperSections] = useState<any[]>([]);
+  const [verifyError, setVerifyError] = useState("");
+  const [verifyingCode, setVerifyingCode] = useState(false);
 
   // Stage 2: 2 Pictures Sequence States
   const [picQuestions, setPicQuestions] = useState<any[]>([]);
@@ -469,12 +478,36 @@ export default function InteractiveTest() {
       executeTransition();
     }, fallbackDelay);
   };
-
   const startTest = async () => {
     setIsGenerating(true);
+    setVerifyError("");
+    let sections: any[] = [];
+    let pId = "";
+    let tCode = "";
+    let url = "/api/interactive-test/generate";
     try {
+      if (testCodeInput.trim()) {
+        setVerifyingCode(true);
+        const verifyRes = await fetch(`/api/test-papers/verify?code=${encodeURIComponent(testCodeInput.trim())}`);
+        const verifyData = await verifyRes.json();
+        setVerifyingCode(false);
+        if (!verifyRes.ok || !verifyData.success) {
+          setVerifyError(verifyData.error || "Mã phòng thi không đúng hoặc chưa được xuất bản!");
+          setIsGenerating(false);
+          return;
+        }
+        pId = verifyData.data.id;
+        tCode = testCodeInput.trim();
+        sections = verifyData.data.sections || [];
+        url += `?testCode=${encodeURIComponent(tCode)}`;
+      }
+
+      setActiveTestCode(tCode);
+      setActiveTestPaperId(pId);
+      setTestPaperSections(sections);
+
       const isDevMode = typeof window !== "undefined" && localStorage.getItem("dev_mode_enabled") === "true";
-      const res = await fetch("/api/interactive-test/generate", {
+      const res = await fetch(url, {
         headers: isDevMode ? { "x-develop-mode": "true" } : {},
       });
       const data = await res.json();
@@ -491,17 +524,53 @@ export default function InteractiveTest() {
         setDynamicSpelling(data.spelling);
         console.log("🎯 [AI Generator] Đã sinh đề thi động thành công!");
       }
-    } catch (err) {
-      console.error("Lỗi gọi API sinh đề thi động:", err);
-      // Fallback variables will take place automatically
     } finally {
       setIsGenerating(false);
-      setStage("picture");
+      
+      // Select first valid stage from sections config, default to picture
+      let firstStage: Stage = "picture";
+      if (sections && sections.length > 0) {
+        const firstSec = sections[0];
+        if (firstSec.type === "warmup") firstStage = "warmup";
+        else if (firstSec.type === "picture") firstStage = "picture";
+        else if (firstSec.type === "reading") firstStage = "reading";
+        else if (firstSec.type === "writing") firstStage = "writing";
+      }
+      
+      setStage(firstStage);
       setPictureIndex(0);
       setSubQuestionIndex(0);
       setAttemptsCount(0);
       lastAskedPicIndexRef.current = null;
     }
+  };
+
+  const getNextStage = (currentStage: Stage): Stage => {
+    if (testPaperSections.length === 0) {
+      if (currentStage === "intro") return "picture";
+      if (currentStage === "warmup") return "picture";
+      if (currentStage === "picture") return "reading";
+      if (currentStage === "reading") return "writing";
+      return "results";
+    }
+
+    const currentSectionIndex = testPaperSections.findIndex(s => {
+      if (currentStage === "warmup" && s.type === "warmup") return true;
+      if (currentStage === "picture" && s.type === "picture") return true;
+      if (currentStage === "reading" && s.type === "reading") return true;
+      if (currentStage === "writing" && s.type === "writing") return true;
+      return false;
+    });
+
+    for (let i = currentSectionIndex + 1; i < testPaperSections.length; i++) {
+      const nextSec = testPaperSections[i];
+      if (nextSec.type === "warmup") return "warmup";
+      if (nextSec.type === "picture") return "picture";
+      if (nextSec.type === "reading") return "reading";
+      if (nextSec.type === "writing") return "writing";
+    }
+
+    return "results";
   };
 
   // Automatically ask the first sub-question when starting picture stage or switching pictures
@@ -847,7 +916,7 @@ export default function InteractiveTest() {
         if (isStageOver) {
           if (stage === "warmup") {
             runTransitionAfterSpeech(() => {
-              setStage("picture");
+              setStage(getNextStage("warmup"));
             }, data.aiResponse);
           } else if (stage === "picture") {
             // Handle sequential 2-picture logic
@@ -872,7 +941,7 @@ export default function InteractiveTest() {
             } else {
               runTransitionAfterSpeech(() => {
                 setTotalProbingTurns(prev => prev + probingTurnsCount);
-                setStage("reading");
+                setStage(getNextStage("picture"));
               }, data.aiResponse);
             }
           } else if (stage === "reading") {
@@ -908,7 +977,7 @@ export default function InteractiveTest() {
 
     playTTS(feedbackText);
     runTransitionAfterSpeech(() => {
-      setStage("writing");
+      setStage(getNextStage("reading"));
     }, feedbackText);
   };
 
@@ -1117,7 +1186,9 @@ export default function InteractiveTest() {
           scores: computedScores,
           chatHistory: transcriptToSave,
           overallLevel: overallLevelStr,
-          userId: localStorage.getItem("eduz_user_id") || `kid_entrance_${Date.now()}`
+          userId: localStorage.getItem("eduz_user_id") || `kid_entrance_${Date.now()}`,
+          testCode: activeTestCode,
+          testPaperId: activeTestPaperId
         })
       });
       const data = await res.json();
@@ -1277,7 +1348,7 @@ export default function InteractiveTest() {
   const exportToImage = async () => {
     if (resultsRef.current) {
       try {
-        const dataUrl = await toPng(resultsRef.current, { cacheBust: true, pixelRatio: 2 });
+        const dataUrl = await toPng(resultsRef.current, { cacheBust: true, pixelRatio: 2, fontEmbedCSS: "" });
         const link = document.createElement("a");
         link.href = dataUrl;
         link.download = `Ket_Qua_Test_${kidName}_${new Date().getTime()}.png`;
@@ -1291,7 +1362,7 @@ export default function InteractiveTest() {
   const exportToPDF = async () => {
     if (resultsRef.current) {
       try {
-        const dataUrl = await toPng(resultsRef.current, { cacheBust: true, pixelRatio: 2 });
+        const dataUrl = await toPng(resultsRef.current, { cacheBust: true, pixelRatio: 2, fontEmbedCSS: "" });
         const pdf = new jsPDF("p", "mm", "a4");
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const pageHeight = pdf.internal.pageSize.getHeight();
@@ -1320,8 +1391,7 @@ export default function InteractiveTest() {
   const shareToZalo = async () => {
     if (resultsRef.current) {
       try {
-        const blob = await toBlob(resultsRef.current, { cacheBust: true, pixelRatio: 2 });
-        if (!blob) return;
+        const blob = await toBlob(resultsRef.current, { cacheBust: true, pixelRatio: 2, fontEmbedCSS: "" });        if (!blob) return;
         const file = new File([blob], `Ket_Qua_Test_${kidName}.png`, { type: "image/png" });
         
         // Try Web Share API (Mobile)
@@ -1366,7 +1436,7 @@ export default function InteractiveTest() {
           <h1 className="text-2xl md:text-3xl font-black text-blue-600 dark:text-blue-400 mb-2">BÀI THI ĐẦU VÀO CHO BÉ</h1>
           <h3 className="text-xs md:text-sm font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4 md:mb-6">Đánh giá năng lực đầu vào</h3>
           
-          <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-3 md:p-4 text-left border border-slate-200 dark:border-slate-600 space-y-2.5 md:space-y-3 mb-6 md:mb-8">
+          <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-3 md:p-4 text-left border border-slate-200 dark:border-slate-600 space-y-2.5 md:space-y-3 mb-6 md:mb-6">
             <h4 className="font-extrabold text-xs text-slate-500 uppercase tracking-wider">Lộ trình bài test:</h4>
             <div className="flex items-start gap-2.5 text-xs text-slate-600 font-bold">
               <span className="w-5 h-5 rounded-full bg-pink-100 border border-pink-200 text-pink-500 flex items-center justify-center shrink-0">1</span>
@@ -1374,28 +1444,54 @@ export default function InteractiveTest() {
             </div>
             <div className="flex items-start gap-2.5 text-xs text-slate-600 font-bold">
               <span className="w-5 h-5 rounded-full bg-amber-100 border border-amber-200 text-amber-500 flex items-center justify-center shrink-0">2</span>
-              <span><strong>Speaking:</strong> Tương tác và miêu tả <strong>2 Bức tranh</strong> liên tiếp</span>
+              <span><strong>Speaking:</strong> Tương tác và miêu tả <strong>Bức tranh</strong> sinh động</span>
             </div>
             <div className="flex items-start gap-2.5 text-xs text-slate-600 font-bold">
               <span className="w-5 h-5 rounded-full bg-emerald-100 border border-emerald-200 text-emerald-500 flex items-center justify-center shrink-0">3</span>
-              <span><strong>Reading:</strong> Đọc to <strong>Truyện dài động</strong> & MCQ trắc nghiệm</span>
+              <span><strong>Reading:</strong> Đọc to <strong>Truyện ngắn động</strong> & MCQ trắc nghiệm</span>
             </div>
             <div className="flex items-start gap-2.5 text-xs text-slate-600 font-bold">
               <span className="w-5 h-5 rounded-full bg-indigo-100 border border-indigo-200 text-indigo-500 flex items-center justify-center shrink-0">4</span>
-              <span><strong>Writing:</strong> Đánh vần và gõ <strong>2 từ vựng</strong> (Không gợi ý!)</span>
+              <span><strong>Writing:</strong> Đánh vần và gõ <strong>từ vựng</strong> tương tác</span>
             </div>
           </div>
 
-          <p className="text-[10px] md:text-xs text-slate-500 dark:text-slate-400 mb-6 md:mb-8 font-extrabold">
+          {/* Test Code Input Room */}
+          <div className="mb-6 text-left bg-blue-50/50 dark:bg-slate-800/40 p-4 border border-blue-100 dark:border-blue-900 rounded-2xl">
+            <label className="block text-xs font-black text-indigo-600 dark:text-indigo-400 mb-1.5 uppercase tracking-wide">
+              🔑 Nhập mã phòng thi (nếu có):
+            </label>
+            <input 
+              type="text" 
+              value={testCodeInput} 
+              onChange={e => setTestCodeInput(e.target.value)} 
+              className="w-full bg-white dark:bg-slate-800 border-2 border-blue-200 focus:border-indigo-500 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-xl px-4 py-2 font-bold text-center text-sm transition-colors" 
+              placeholder="Ví dụ: MID_TERM_A, LOP_MOVERS_01..." 
+            />
+            {verifyError && (
+              <p className="text-red-500 text-[11px] font-bold mt-1.5 flex items-center gap-1 justify-center bg-red-50 dark:bg-red-950/20 p-1.5 rounded-lg border border-red-100 dark:border-red-900">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" /> {verifyError}
+              </p>
+            )}
+          </div>
+
+          <p className="text-[10px] md:text-xs text-slate-500 dark:text-slate-400 mb-6 font-extrabold">
             Bé hãy bật loa thật to và chuẩn bị sát Mic để thi cùng cô giáo AI nhé! 🎤👩‍🏫
           </p>
 
           <button 
             onClick={startTest}
-            className="w-full btn-3d-green py-4 font-bold text-xl shadow-lg hover:scale-105 transition-transform cursor-pointer"
+            disabled={verifyingCode}
+            className="w-full btn-3d-green py-4 font-bold text-xl shadow-lg hover:scale-105 transition-transform cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
           >
-            <PlayCircle className="inline-block mr-2 w-6 h-6 animate-pulse" />
-            BẮT ĐẦU PHÒNG THI
+            {verifyingCode ? (
+              <span>Đang kiểm tra phòng thi...</span>
+            ) : (
+              <>
+                <PlayCircle className="inline-block mr-2 w-6 h-6 animate-pulse" />
+                BẮT ĐẦU PHÒNG THI
+              </>
+            )}
           </button>
           
           <Link href="/" className="block mt-4 text-slate-400 dark:text-slate-500 font-bold hover:text-slate-600 dark:hover:text-slate-300 text-xs">

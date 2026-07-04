@@ -30,12 +30,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Missing required fields" }, { status: 400 });
     }
     
+    // Sanitize testCode to avoid sparse unique index duplication on empty strings
+    if (data.testCode === "" || (typeof data.testCode === "string" && !data.testCode.trim())) {
+      delete data.testCode;
+    }
+    
     const newPaper = await TestPaper.create(data);
     return NextResponse.json({ success: true, data: newPaper });
   } catch (error: any) {
     console.error("POST test-papers error:", error);
     if (error.code === 11000) {
-      return NextResponse.json({ success: false, error: "TestPaper ID already exists" }, { status: 400 });
+      return NextResponse.json({ success: false, error: "TestPaper ID or Test Code already exists" }, { status: 400 });
     }
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
@@ -48,6 +53,11 @@ export async function PUT(req: NextRequest) {
 
     if (!data.id) {
       return NextResponse.json({ success: false, error: "TestPaper ID is required for update" }, { status: 400 });
+    }
+
+    // Sanitize testCode
+    if (data.testCode === "" || (typeof data.testCode === "string" && !data.testCode.trim())) {
+      data.testCode = undefined;
     }
 
     const updated = await TestPaper.findOneAndUpdate(
@@ -63,6 +73,9 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ success: true, data: updated });
   } catch (error: any) {
     console.error("PUT test-papers error:", error);
+    if (error.code === 11000) {
+      return NextResponse.json({ success: false, error: "Test Code already exists for another Test Paper" }, { status: 400 });
+    }
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }

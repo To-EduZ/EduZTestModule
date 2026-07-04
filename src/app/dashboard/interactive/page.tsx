@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { toPng, toBlob } from "html-to-image";
 import jsPDF from "jspdf";
+import * as XLSX from "xlsx";
 import { useRef } from "react";
 import AnalyticsFilterBar from "@/components/AnalyticsFilterBar";
 
@@ -98,12 +99,11 @@ export default function InteractiveDashboard() {
       }
     }
   };
-
   const exportToImage = async () => {
     if (!resultsRef.current || !selectedSession) return;
     await withExpandedChat(async () => {
       try {
-        const dataUrl = await toPng(resultsRef.current!, { cacheBust: true, pixelRatio: 2 });
+        const dataUrl = await toPng(resultsRef.current!, { cacheBust: true, pixelRatio: 2, fontEmbedCSS: "" });
         const link = document.createElement("a");
         link.href = dataUrl;
         link.download = `Chi_Tiet_Test_${selectedSession.kidName}_${new Date().getTime()}.png`;
@@ -118,7 +118,7 @@ export default function InteractiveDashboard() {
     if (!resultsRef.current || !selectedSession) return;
     await withExpandedChat(async () => {
       try {
-        const dataUrl = await toPng(resultsRef.current!, { cacheBust: true, pixelRatio: 2 });
+        const dataUrl = await toPng(resultsRef.current!, { cacheBust: true, pixelRatio: 2, fontEmbedCSS: "" });
         const pdf = new jsPDF("p", "mm", "a4");
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const pageHeight = pdf.internal.pageSize.getHeight();
@@ -148,7 +148,7 @@ export default function InteractiveDashboard() {
     if (!resultsRef.current || !selectedSession) return;
     await withExpandedChat(async () => {
       try {
-        const blob = await toBlob(resultsRef.current!, { cacheBust: true, pixelRatio: 2 });
+        const blob = await toBlob(resultsRef.current!, { cacheBust: true, pixelRatio: 2, fontEmbedCSS: "" });
         if (!blob) return;
         const file = new File([blob], `Ket_Qua_Test_${selectedSession.kidName}.png`, { type: "image/png" });
         

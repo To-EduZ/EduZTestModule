@@ -2,6 +2,8 @@ import mongoose, { Schema, Document, Model } from "mongoose";
 
 export interface IInteractiveSession extends Document {
   userId: string;
+  testCode?: string; // Code entered for this session
+  testPaperId?: string; // Linked test paper ID if any
   kidName: string;
   kidAge: number;
   testKidName?: string;
@@ -27,6 +29,8 @@ export interface IInteractiveSession extends Document {
 const InteractiveSessionSchema: Schema<IInteractiveSession> = new Schema(
   {
     userId: { type: String, required: true },
+    testCode: { type: String, default: "" },
+    testPaperId: { type: String, default: "" },
     kidName: { type: String, required: true },
     kidAge: { type: Number, required: true },
     testKidName: { type: String, required: false },
@@ -54,8 +58,12 @@ const InteractiveSessionSchema: Schema<IInteractiveSession> = new Schema(
   { timestamps: true }
 );
 
+InteractiveSessionSchema.index({ testCode: 1 });
+InteractiveSessionSchema.index({ userId: 1 });
+
 const InteractiveSession: Model<IInteractiveSession> =
   mongoose.models.InteractiveSession ||
   mongoose.model<IInteractiveSession>("InteractiveSession", InteractiveSessionSchema);
 
 export default InteractiveSession;
+
