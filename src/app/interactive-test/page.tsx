@@ -267,10 +267,10 @@ export default function InteractiveTest() {
   
   // Final aggregated scores out of 100
   const [scores, setScores] = useState({
-    speaking: 85,
-    listening: 90,
-    reading: 80,
-    writing: 100
+    speaking: 0,
+    listening: 0,
+    reading: 0,
+    writing: 0
   });
   
   // MongoDB sync states
@@ -304,6 +304,32 @@ export default function InteractiveTest() {
   useEffect(() => {
     handleAudioSubmissionRef.current = handleAudioSubmission;
   });
+
+  const isSkillTested = (skillName: "speaking" | "listening" | "reading" | "writing") => {
+    if (testPaperSections.length === 0) return true;
+    switch (skillName) {
+      case "speaking":
+        return testPaperSections.some(s => s.type === "warmup" || s.type === "picture");
+      case "listening":
+        return testPaperSections.some(s => s.type === "warmup" || s.type === "picture" || s.type === "reading");
+      case "reading":
+        return testPaperSections.some(s => s.type === "reading");
+      case "writing":
+        return testPaperSections.some(s => s.type === "writing");
+      default:
+        return false;
+    }
+  };
+
+  const getReferenceScore = () => {
+    const activeScores = [
+      isSkillTested("speaking") && scores.speaking,
+      isSkillTested("listening") && scores.listening,
+      isSkillTested("reading") && scores.reading,
+      isSkillTested("writing") && scores.writing,
+    ].filter((v): v is number => typeof v === "number");
+    return activeScores.length > 0 ? Math.max(...activeScores) : 0;
+  };
 
   const getTeacherState = () => {
     if (isProcessing) return "thinking";
@@ -481,6 +507,32 @@ export default function InteractiveTest() {
   const startTest = async () => {
     setIsGenerating(true);
     setVerifyError("");
+    
+    // Reset all test-related states to guarantee a clean start
+    setMessages([]);
+    setKeywordsMentioned([]);
+    setProbingTurnsCount(0);
+    setShowMcq(false);
+    setSelectedMcqOption(null);
+    setMcqAnswered(false);
+    setIsMcqCorrect(null);
+    setTypedWord("");
+    setWritingSubmitted(false);
+    setSaveSuccess(null);
+    setPictureIndex(0);
+    setSubQuestionIndex(0);
+    lastAskedPicIndexRef.current = null;
+    setAttemptsCount(0);
+    setKeywordsHitPic1(0);
+    setTotalProbingTurns(0);
+    setWritingTaskIndex(0);
+    setSpellingCorrect1(null);
+    setSpellingCorrect2(null);
+    setActiveSessionId(null);
+    setSelectedRatingStars(null);
+    setHoveredRatingStars(null);
+    setReadingAccuracyState(85);
+
     let sections: any[] = [];
     let pId = "";
     let tCode = "";
@@ -594,6 +646,42 @@ export default function InteractiveTest() {
       }
     }
   }, [stage, pictureIndex, currentQuestion]);
+
+  // Automatically start warmup if it's the first stage
+  useEffect(() => {
+    if (stage === "warmup" && messages.length === 0) {
+      const timer = setTimeout(() => {
+        addAiMessage("Hello! Welcome to the English test. What's your name?");
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [stage, messages.length]);
+
+  // Automatically prompt for reading if it's the first stage of the test
+  useEffect(() => {
+    if (stage === "reading" && messages.length === 0) {
+      const timer = setTimeout(() => {
+        addAiMessage("Let's read a short story together. Please read the story on the screen aloud!");
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [stage, messages.length]);
+
+  // Automatically speak and display spelling prompt when entering writing stage or switching writing task
+  useEffect(() => {
+    if (stage === "writing" && activeSpelling[writingTaskIndex]) {
+      const promptText = activeSpelling[writingTaskIndex].prompt;
+      // Check if we already asked it in the messages to avoid double posting on state changes
+      const isAlreadyAsked = messages.some(m => m.content === promptText);
+      if (!isAlreadyAsked) {
+        const timer = setTimeout(() => {
+          setIsTransitioningStage(false);
+          addAiMessage(promptText);
+        }, 1200);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [stage, writingTaskIndex, activeSpelling, messages]);
 
   // Reset transition flag and auto-activate mic when entering reading stage
   useEffect(() => {
@@ -1121,33 +1209,57 @@ export default function InteractiveTest() {
         playTTS("Well done! You worked so hard!");
       }
 
-      // Calculate final aggregated scores across all 4 stages
-      const expectedKeywordsLength1 = Math.max(
-        picQuestions[0]?.questions?.reduce((acc: number, q: any) => acc + (q.expectedKeywords?.length || 0), 0) ||
-        picQuestions[0]?.evaluationCriteria?.expectedKeywords?.length || 3,
-        1
-      );
-      const expectedKeywordsLength2 = Math.max(
-        picQuestions[1 % picQuestions.length]?.questions?.reduce((acc: number, q: any) => acc + (q.expectedKeywords?.length || 0), 0) ||
-        picQuestions[1 % picQuestions.length]?.evaluationCriteria?.expectedKeywords?.length || 3,
-        1
-      );
-      const totalExpected = expectedKeywordsLength1 + expectedKeywordsLength2;
-      const totalKeywordsHit = keywordsHitPic1 + keywordsMentioned.length;
+      // Auto-transition to final Report Card
+      setTimeout(() => {
+        setStage("results");
+      }, 2500);
+    }
+  };
 
-      const pictureSpeaking = Math.round((totalKeywordsHit / totalExpected) * 100);
-      const speakingScore = Math.round((100 + pictureSpeaking + readingAccuracyState) / 3);
+  // Automatically calculate scores and save session when test enters results stage
+  useEffect(() => {
+    if (stage === "results" && !activeSessionId) {
+      // 1. Calculate Speaking Score
+      let speakingScore = 0;
+      if (isSkillTested("speaking")) {
+        const expectedKeywordsLength1 = Math.max(
+          picQuestions[0]?.questions?.reduce((acc: number, q: any) => acc + (q.expectedKeywords?.length || 0), 0) ||
+          picQuestions[0]?.evaluationCriteria?.expectedKeywords?.length || 3,
+          1
+        );
+        const expectedKeywordsLength2 = Math.max(
+          picQuestions[1 % picQuestions.length]?.questions?.reduce((acc: number, q: any) => acc + (q.expectedKeywords?.length || 0), 0) ||
+          picQuestions[1 % picQuestions.length]?.evaluationCriteria?.expectedKeywords?.length || 3,
+          1
+        );
+        const totalExpected = expectedKeywordsLength1 + expectedKeywordsLength2;
+        const totalKeywordsHit = keywordsHitPic1 + keywordsMentioned.length;
+        const pictureSpeaking = Math.round((totalKeywordsHit / totalExpected) * 100);
+        
+        speakingScore = Math.round((100 + pictureSpeaking + readingAccuracyState) / 3);
+      }
 
-      const pictureListening = Math.max(100 - ((totalProbingTurns + probingTurnsCount) * 8), 65);
-      const mcqListening = isMcqCorrect ? 100 : 40;
-      const listeningScore = Math.round((pictureListening + mcqListening) / 2);
+      // 2. Calculate Listening Score
+      let listeningScore = 0;
+      if (isSkillTested("listening")) {
+        const pictureListening = Math.max(100 - ((totalProbingTurns + probingTurnsCount) * 8), 65);
+        const mcqListening = isMcqCorrect ? 100 : 40;
+        listeningScore = Math.round((pictureListening + mcqListening) / 2);
+      }
 
-      const mcqReading = isMcqCorrect ? 100 : 30;
-      const readingScore = Math.round((readingAccuracyState + mcqReading) / 2);
+      // 3. Calculate Reading Score
+      let readingScore = 0;
+      if (isSkillTested("reading")) {
+        const mcqReading = isMcqCorrect ? 100 : 30;
+        readingScore = Math.round((readingAccuracyState + mcqReading) / 2);
+      }
 
-      // Writing score: both correct (100), one correct (65), both wrong (30)
-      const correctSpellingsCount = (spellingCorrect1 ? 1 : 0) + (isCorrect ? 1 : 0);
-      const writingScore = correctSpellingsCount === 2 ? 100 : correctSpellingsCount === 1 ? 65 : 30;
+      // 4. Calculate Writing Score
+      let writingScore = 0;
+      if (isSkillTested("writing")) {
+        const correctSpellingsCount = (spellingCorrect1 ? 1 : 0) + (spellingCorrect2 ? 1 : 0);
+        writingScore = correctSpellingsCount === 2 ? 100 : correctSpellingsCount === 1 ? 65 : 30;
+      }
 
       const computedScores = {
         speaking: speakingScore,
@@ -1158,18 +1270,33 @@ export default function InteractiveTest() {
 
       setScores(computedScores);
       autoSaveInteractiveSession(computedScores);
-
-      // Auto-transition to final Report Card
-      setTimeout(() => {
-        setStage("results");
-      }, 2500);
     }
-  };
+  }, [
+    stage,
+    activeSessionId,
+    testPaperSections,
+    picQuestions,
+    keywordsHitPic1,
+    keywordsMentioned,
+    readingAccuracyState,
+    totalProbingTurns,
+    probingTurnsCount,
+    isMcqCorrect,
+    spellingCorrect1,
+    spellingCorrect2
+  ]);
 
   const autoSaveInteractiveSession = async (computedScores: typeof scores) => {
     try {
       console.log("💾 Autosaving interactive session to database (default: no rating)...");
-      const overallLevelStr = computedScores.speaking >= 85 ? "Flyers (A2)" : computedScores.speaking >= 60 ? "Movers (A1)" : "Starters (Pre-A1)";
+      const activeScores = [
+        isSkillTested("speaking") && computedScores.speaking,
+        isSkillTested("listening") && computedScores.listening,
+        isSkillTested("reading") && computedScores.reading,
+        isSkillTested("writing") && computedScores.writing,
+      ].filter((v): v is number => typeof v === "number");
+      const refScore = activeScores.length > 0 ? Math.max(...activeScores) : 0;
+      const overallLevelStr = refScore >= 85 ? "Flyers (A2)" : refScore >= 60 ? "Movers (A1)" : "Starters (Pre-A1)";
       
       const transcriptToSave = messages.map(m => ({
         role: m.role,
@@ -1223,8 +1350,14 @@ export default function InteractiveTest() {
   const saveResultsToDb = async () => {
     setIsSaving(true);
     try {
-      const skills: ("Speaking" | "Listening" | "Reading" | "Writing")[] = ["Speaking", "Listening", "Reading", "Writing"];
-      const level = scores.speaking >= 85 ? "Flyers" : scores.speaking >= 60 ? "Movers" : "Starters";
+      const skills: ("Speaking" | "Listening" | "Reading" | "Writing")[] = [];
+      if (isSkillTested("speaking")) skills.push("Speaking");
+      if (isSkillTested("listening")) skills.push("Listening");
+      if (isSkillTested("reading")) skills.push("Reading");
+      if (isSkillTested("writing")) skills.push("Writing");
+
+      const refScore = getReferenceScore();
+      const level = refScore >= 85 ? "Flyers" : refScore >= 60 ? "Movers" : "Starters";
       
       const promises = skills.map(async (skill) => {
         let skillScore = 0;
@@ -1303,13 +1436,14 @@ export default function InteractiveTest() {
   };
 
   const roadmapTasks = () => {
-    if (scores.speaking >= 85) {
+    const refScore = getReferenceScore();
+    if (refScore >= 85) {
       return [
         "Thử thách tự viết 1 đoạn văn ngắn 5 câu giới thiệu về bản thân và gia đình ✍️",
         "Luyện nghe các đoạn hội thoại dài và tóm tắt lại ý chính 🎧",
         "Trở thành trợ giảng nhí giúp cô giáo AI hướng dẫn các bạn nhỏ hơn đọc bài nhé 👩‍🏫"
       ];
-    } else if (scores.speaking >= 60) {
+    } else if (refScore >= 60) {
       return [
         "Luyện miêu tả 1 bức tranh con thích bằng 3 câu tiếng Anh trôi chảy 🖼️",
         "Luyện chép chính tả 3 từ vựng khó chủ đề trường học và sở thích 📓",
@@ -1324,7 +1458,7 @@ export default function InteractiveTest() {
     }
   };
 
-  const overallLevelInfo = getOverallLevel(scores.speaking);
+  const overallLevelInfo = getOverallLevel(getReferenceScore());
 
   // 0. Dynamic YLE Test Loading overlay
   if (isGenerating) {
@@ -1613,78 +1747,127 @@ export default function InteractiveTest() {
               </div>
 
               {/* Bottom: Development Radar Chart (ô 2) */}
-              <div className="flex justify-center items-center w-full">
-                <DevelopmentRadarChart
-                  title="Biểu đồ phát triển"
-                  colorScheme="violet"
-                  size={380}
-                  data={[
-                    { label: "Speaking (Nói)", value: scores.speaking, emoji: "🎤" },
-                    { label: "Listening (Nghe)", value: scores.listening, emoji: "🎧" },
-                    { label: "Reading (Đọc)", value: scores.reading, emoji: "📖" },
-                    { label: "Writing (Viết)", value: scores.writing, emoji: "✍️" },
-                  ]}
-                />
-              </div>
+              {(() => {
+                const chartData = [
+                  isSkillTested("speaking") && { label: "Speaking (Nói)", value: scores.speaking, emoji: "🎤" },
+                  isSkillTested("listening") && { label: "Listening (Nghe)", value: scores.listening, emoji: "🎧" },
+                  isSkillTested("reading") && { label: "Reading (Đọc)", value: scores.reading, emoji: "📖" },
+                  isSkillTested("writing") && { label: "Writing (Viết)", value: scores.writing, emoji: "✍️" },
+                ].filter(Boolean) as any[];
+
+                if (chartData.length >= 3) {
+                  return (
+                    <div className="flex justify-center items-center w-full">
+                      <DevelopmentRadarChart
+                        title="Biểu đồ phát triển"
+                        colorScheme="violet"
+                        size={380}
+                        data={chartData}
+                      />
+                    </div>
+                  );
+                }
+                return null;
+              })()}
             </div>
 
             {/* Skills Shields Matrix Grid */}
             <div className="bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-600 rounded-3xl p-4 md:p-6 shadow-inner mt-4 md:mt-6">
               <h3 className="text-xs md:text-sm font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4 md:mb-6">
-                Đánh giá theo 4 kỹ năng ngôn ngữ
+                Đánh giá theo các kỹ năng được thi
               </h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
                 {/* Speaking */}
-                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center justify-between shadow-sm">
+                <div className={`bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center justify-between shadow-sm ${!isSkillTested("speaking") ? "opacity-40 bg-slate-50/50 dark:bg-slate-900/30" : ""}`}>
                   <div>
                     <h4 className="font-extrabold text-sm text-slate-700 dark:text-slate-200">🎤 Speaking (Kỹ năng Nói)</h4>
-                    <p className="text-[10px] text-slate-400 dark:text-slate-400 font-bold mt-0.5">Điểm quy đổi: {scores.speaking}/100</p>
+                    {isSkillTested("speaking") ? (
+                      <p className="text-[10px] text-slate-400 dark:text-slate-400 font-bold mt-0.5">Điểm quy đổi: {scores.speaking}/100</p>
+                    ) : (
+                      <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold mt-0.5">Không đánh giá (N/A)</p>
+                    )}
                   </div>
-                  <div className="flex gap-1">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <SkillShield key={i} filled={i < getShieldsCount(scores.speaking)} />
-                    ))}
-                  </div>
+                  {isSkillTested("speaking") ? (
+                    <div className="flex gap-1">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <SkillShield key={i} filled={i < getShieldsCount(scores.speaking)} />
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 px-2.5 py-1 rounded-xl font-bold border border-slate-200 dark:border-slate-700 select-none">
+                      N/A
+                    </span>
+                  )}
                 </div>
 
                 {/* Listening */}
-                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center justify-between shadow-sm">
+                <div className={`bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center justify-between shadow-sm ${!isSkillTested("listening") ? "opacity-40 bg-slate-50/50 dark:bg-slate-900/30" : ""}`}>
                   <div>
                     <h4 className="font-extrabold text-sm text-slate-700 dark:text-slate-200">🎧 Listening (Kỹ năng Nghe)</h4>
-                    <p className="text-[10px] text-slate-400 dark:text-slate-400 font-bold mt-0.5">Điểm quy đổi: {scores.listening}/100</p>
+                    {isSkillTested("listening") ? (
+                      <p className="text-[10px] text-slate-400 dark:text-slate-400 font-bold mt-0.5">Điểm quy đổi: {scores.listening}/100</p>
+                    ) : (
+                      <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold mt-0.5">Không đánh giá (N/A)</p>
+                    )}
                   </div>
-                  <div className="flex gap-1">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <SkillShield key={i} filled={i < getShieldsCount(scores.listening)} />
-                    ))}
-                  </div>
+                  {isSkillTested("listening") ? (
+                    <div className="flex gap-1">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <SkillShield key={i} filled={i < getShieldsCount(scores.listening)} />
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 px-2.5 py-1 rounded-xl font-bold border border-slate-200 dark:border-slate-700 select-none">
+                      N/A
+                    </span>
+                  )}
                 </div>
 
                 {/* Reading */}
-                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center justify-between shadow-sm">
+                <div className={`bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center justify-between shadow-sm ${!isSkillTested("reading") ? "opacity-40 bg-slate-50/50 dark:bg-slate-900/30" : ""}`}>
                   <div>
                     <h4 className="font-extrabold text-sm text-slate-700 dark:text-slate-200">📖 Reading (Kỹ năng Đọc)</h4>
-                    <p className="text-[10px] text-slate-400 dark:text-slate-400 font-bold mt-0.5">Điểm quy đổi: {scores.reading}/100</p>
+                    {isSkillTested("reading") ? (
+                      <p className="text-[10px] text-slate-400 dark:text-slate-400 font-bold mt-0.5">Điểm quy đổi: {scores.reading}/100</p>
+                    ) : (
+                      <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold mt-0.5">Không đánh giá (N/A)</p>
+                    )}
                   </div>
-                  <div className="flex gap-1">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <SkillShield key={i} filled={i < getShieldsCount(scores.reading)} />
-                    ))}
-                  </div>
+                  {isSkillTested("reading") ? (
+                    <div className="flex gap-1">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <SkillShield key={i} filled={i < getShieldsCount(scores.reading)} />
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 px-2.5 py-1 rounded-xl font-bold border border-slate-200 dark:border-slate-700 select-none">
+                      N/A
+                    </span>
+                  )}
                 </div>
 
                 {/* Writing */}
-                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center justify-between shadow-sm">
+                <div className={`bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center justify-between shadow-sm ${!isSkillTested("writing") ? "opacity-40 bg-slate-50/50 dark:bg-slate-900/30" : ""}`}>
                   <div>
                     <h4 className="font-extrabold text-sm text-slate-700 dark:text-slate-200">✍️ Writing (Kỹ năng Viết)</h4>
-                    <p className="text-[10px] text-slate-400 dark:text-slate-400 font-bold mt-0.5">Điểm quy đổi: {scores.writing}/100</p>
+                    {isSkillTested("writing") ? (
+                      <p className="text-[10px] text-slate-400 dark:text-slate-400 font-bold mt-0.5">Điểm quy đổi: {scores.writing}/100</p>
+                    ) : (
+                      <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold mt-0.5">Không đánh giá (N/A)</p>
+                    )}
                   </div>
-                  <div className="flex gap-1">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <SkillShield key={i} filled={i < getShieldsCount(scores.writing)} />
-                    ))}
-                  </div>
+                  {isSkillTested("writing") ? (
+                    <div className="flex gap-1">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <SkillShield key={i} filled={i < getShieldsCount(scores.writing)} />
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 px-2.5 py-1 rounded-xl font-bold border border-slate-200 dark:border-slate-700 select-none">
+                      N/A
+                    </span>
+                  )}
                 </div>
               </div>
             </div>

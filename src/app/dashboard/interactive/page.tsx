@@ -18,6 +18,7 @@ interface InteractiveSession {
   kidAge: number;
   testKidName?: string;
   testKidAge?: number;
+  testCode?: string;
   scores: {
     speaking: number;
     listening: number;
@@ -238,6 +239,7 @@ export default function InteractiveDashboard() {
         const overallScore = getOverallAvgScore(s.scores);
         return {
           "STT": index + 1,
+          "Mã Phòng Thi": s.testCode || "Thi tự do",
           "Tên Học Viên (Hồ sơ)": s.kidName,
           "Tuổi (Hồ sơ)": s.kidAge,
           "Tên (Lúc Test)": s.testKidName || "Con",
@@ -438,6 +440,7 @@ export default function InteractiveDashboard() {
                     <th className="py-4.5 px-6">Tuổi</th>
                     <th className="py-4.5 px-6">Điểm TB</th>
                     <th className="py-4.5 px-6">Trình độ đánh giá</th>
+                    <th className="py-4.5 px-6">Phòng thi</th>
                     <th className="py-4.5 px-6 text-center">Bé đánh giá</th>
                     <th className="py-4.5 px-6 text-right">Chi tiết</th>
                   </tr>
@@ -470,6 +473,15 @@ export default function InteractiveDashboard() {
                           <span className="bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 px-2 py-0.5 rounded-lg text-indigo-600 dark:text-indigo-400 font-extrabold">
                             {session.overallLevel}
                           </span>
+                        </td>
+                        <td className="py-4 px-6">
+                          {session.testCode ? (
+                            <span className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 px-2 py-0.5 rounded-lg text-blue-600 dark:text-blue-400 font-extrabold font-mono text-[10px]">
+                              {session.testCode}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 italic font-medium">Tự do</span>
+                          )}
                         </td>
                         <td className="py-4 px-6 text-center">
                           {session.studentStars !== null && session.studentStars !== undefined ? (

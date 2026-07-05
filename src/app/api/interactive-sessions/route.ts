@@ -177,6 +177,7 @@ export async function GET(req: NextRequest) {
     const search = searchParams.get("search") || "";
     const schoolFilter = searchParams.get("school") || "";
     const classFilter = searchParams.get("className") || "";
+    const testCodeFilter = searchParams.get("testCode") || "";
     const fromDate = searchParams.get("from") || "";
     const toDate = searchParams.get("to") || "";
     
@@ -185,9 +186,15 @@ export async function GET(req: NextRequest) {
 
     if (!isFallback) {
       try {
-        let query = {};
+        let query: any = {};
         if (search) {
-          query = { kidName: { $regex: search, $options: "i" } };
+          query.$or = [
+            { kidName: { $regex: search, $options: "i" } },
+            { testCode: { $regex: search, $options: "i" } }
+          ];
+        }
+        if (testCodeFilter) {
+          query.testCode = testCodeFilter;
         }
         rawList = await InteractiveSession.find(query).sort({ createdAt: -1 }).lean();
         
@@ -222,9 +229,17 @@ export async function GET(req: NextRequest) {
     }
 
     // Apply client-side search filter for memory fallback if search parameter is active
-    if (isFallback && search) {
+    if (search) {
       const lowerSearch = search.toLowerCase();
-      rawList = rawList.filter(item => (item.kidName || "").toLowerCase().includes(lowerSearch));
+      // Apply to rawList if it was fallback or MongoDB query somehow skipped it
+      rawList = rawList.filter(item => 
+        (item.kidName || "").toLowerCase().includes(lowerSearch) ||
+        (item.testCode || "").toLowerCase().includes(lowerSearch)
+      );
+    }
+
+    if (testCodeFilter) {
+      rawList = rawList.filter(session => session.testCode === testCodeFilter);
     }
 
     // Apply school, class, date filters
@@ -253,13 +268,17 @@ export async function GET(req: NextRequest) {
     const starDistribution: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
 
     rawList.forEach((session) => {
-      // Calculate overall average of the 4 skills
-      const avgScore = (
-        (session.scores?.speaking || 0) +
-        (session.scores?.listening || 0) +
-        (session.scores?.reading || 0) +
-        (session.scores?.writing || 0)
-      ) / 4;
+      // Calculate overall average of only the tested skills (score > 0)
+      const activeScores = [
+        session.scores?.speaking || 0,
+        session.scores?.listening || 0,
+        session.scores?.reading || 0,
+        session.scores?.writing || 0
+      ].filter(score => score > 0);
+
+      const avgScore = activeScores.length > 0
+        ? activeScores.reduce((sum, s) => sum + s, 0) / activeScores.length
+        : 0;
       totalScoreSum += avgScore;
 
       // Extract stars satisfaction feedback

@@ -14,12 +14,12 @@ export async function GET(req: NextRequest) {
     }
     
     // Find test paper with the matching test code
-    const paper = await TestPaper.findOne({ testCode: code.trim(), status: "published" }).lean();
+    const paper = await TestPaper.findOne({ testCode: code.trim() }).lean();
     
     if (!paper) {
       return NextResponse.json({ 
         success: false, 
-        error: "Mã phòng thi không tồn tại hoặc bài thi chưa được xuất bản!" 
+        error: "Mã phòng thi không tồn tại!" 
       }, { status: 404 });
     }
     
