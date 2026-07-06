@@ -9,22 +9,25 @@ const fallbackQuestions = [
   {
     id: "MV_P1_57",
     level: "Movers",
+    type: "Scene_Description",
     imagePath: "https://res.cloudinary.com/dupquwf3j/image/upload/v1782384803/hubxanh_yle_pdf_digitalizer/MV_P1_57_1782384801316.jpg",
     evaluationCriteria: {
       expectedKeywords: ["weather", "raining", "rainy", "clouds", "sunny", "sun", "blue sky"],
     },
   },
   {
-    id: "MV_P1_87",
+    id: "MV_P2_47",
     level: "Movers",
-    imagePath: "https://res.cloudinary.com/dupquwf3j/image/upload/v1782385222/hubxanh_yle_pdf_digitalizer/MV_P1_87_1782385217272.jpg",
+    type: "Find_Differences",
+    imagePath: "https://res.cloudinary.com/dupquwf3j/image/upload/v1782385365/hubxanh_yle_pdf_digitalizer/MV_P2_47_1782385362693.jpg",
     evaluationCriteria: {
-      expectedKeywords: ["cat", "dog", "sleeping", "sofa"],
+      expectedKeywords: ["frog"],
     },
   },
   {
     id: "ST_P1_43",
     level: "Movers",
+    type: "Scene_Description",
     imagePath:
       "https://res.cloudinary.com/dupquwf3j/image/upload/v1779977776/hubxanh_yle_pdf_digitalizer/ST_P1_43_1779977774734.jpg",
     evaluationCriteria: {
@@ -38,7 +41,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const paperId = searchParams.get("paperId");
   const testCodeParam = searchParams.get("testCode");
-  
+
   let selectedPictures: any[] = [];
   try {
     let picQuestions: any[] = [];
@@ -67,11 +70,8 @@ export async function GET(req: NextRequest) {
         } else if (mode === "fixed" && fixedId) {
           targetPaper = await TestPaper.findOne({ id: fixedId, moduleType: "interactive" }).lean();
         } else {
-          const publishedPapers = await TestPaper.find({ moduleType: "interactive", status: "published" }).lean();
-          if (publishedPapers.length > 0) {
-            const randomIndex = Math.floor(Math.random() * publishedPapers.length);
-            targetPaper = publishedPapers[randomIndex];
-          }
+          // General/adaptive test: load questions from the entire database pool
+          targetPaper = null;
         }
 
         let dbQuestions = null;
@@ -132,7 +132,7 @@ export async function GET(req: NextRequest) {
 
     const descQuestions = picQuestions.filter(q => q.type !== "Find_Differences");
     const diffQuestions = picQuestions.filter(q => q.type === "Find_Differences");
-    
+
     if (picCount === 1) {
       // Pick 1 description picture
       if (descQuestions.length > 0) {
@@ -146,13 +146,13 @@ export async function GET(req: NextRequest) {
         const randomIndex = Math.floor(Math.random() * descQuestions.length);
         selectedPictures.push(descQuestions[randomIndex]);
       }
-      
+
       // Pick find differences picture (second)
       if (diffQuestions.length > 0) {
         const randomIndex = Math.floor(Math.random() * diffQuestions.length);
         selectedPictures.push(diffQuestions[randomIndex]);
       }
-      
+
       // If we still need pictures to make it exactly picCount, fill from remaining general pool
       if (selectedPictures.length < picCount) {
         const remainingPool = picQuestions.filter(q => !selectedPictures.some(p => p.id === q.id));
@@ -227,7 +227,7 @@ Lưu ý quan trọng về JSON:
       parsed = safeJsonParse(content);
     } catch (geminiErr: any) {
       console.warn("⚠️ Lỗi gọi Gemini hoặc parse JSON đề thi. Sử dụng bộ đề thi tĩnh dự phòng.", geminiErr);
-      
+
       const backupStory =
         "Max is a happy little monkey who lives in a very tall coconut tree in the jungle. He loves to eat sweet yellow bananas every morning. Today, Max looks down and sees a small green frog sitting on a leaf in the pond. The frog is jumping up and down and singing a funny song. Max waves hello and laughs happily!";
 
