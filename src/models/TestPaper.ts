@@ -9,6 +9,9 @@ export interface ITestSection {
     picCount?: number;
     wordCount?: number;
     aiPromptOverride?: string;
+    spellingCount?: number;
+    warmupScript?: Array<{ questionText: string; expectedField: string }>;
+    difficulty?: "easy" | "medium" | "hard";
   };
 }
 
@@ -37,7 +40,18 @@ const TestSectionSchema = new Schema({
   config: {
     picCount: { type: Number },
     wordCount: { type: Number },
-    aiPromptOverride: { type: String }
+    aiPromptOverride: { type: String },
+    spellingCount: { type: Number },
+    warmupScript: {
+      type: [
+        {
+          questionText: { type: String },
+          expectedField: { type: String }
+        }
+      ],
+      default: undefined
+    },
+    difficulty: { type: String, enum: ["easy", "medium", "hard"] }
   }
 }, { _id: false });
 

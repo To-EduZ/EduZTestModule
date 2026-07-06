@@ -22,6 +22,11 @@ export interface IInteractiveSession extends Document {
   }[];
   studentStars: number | null; // Null means "no rating"
   overallLevel: string;
+  testedSkills?: string[]; // [MỚI] kỹ năng đã kiểm tra thực tế
+  sectionScores?: { // [MỚI] điểm số chi tiết từng phần
+    sectionType: string;
+    score: number;
+  }[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -54,6 +59,16 @@ const InteractiveSessionSchema: Schema<IInteractiveSession> = new Schema(
     },
     studentStars: { type: Number, default: null, min: 1, max: 5 },
     overallLevel: { type: String, required: true },
+    testedSkills: { type: [String], default: [] },
+    sectionScores: {
+      type: [
+        {
+          sectionType: { type: String },
+          score: { type: Number }
+        }
+      ],
+      default: []
+    }
   },
   { timestamps: true }
 );

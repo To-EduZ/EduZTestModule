@@ -12,6 +12,14 @@ import Link from "next/link";
 import DevelopmentRadarChart from "@/components/DevelopmentRadarChart";
 import { toPng, toBlob } from "html-to-image";
 import jsPDF from "jspdf";
+import SkillShield from "./components/SkillShield";
+import Soundwave from "./components/Soundwave";
+import TeacherAvatar from "./components/TeacherAvatar";
+import WarmupStage from "./components/WarmupStage";
+import PictureStage from "./components/PictureStage";
+import ReadingStage from "./components/ReadingStage";
+import WritingStage from "./components/WritingStage";
+import ResultsStage from "./components/ResultsStage";
 
 // Shuffle helper (Fisher-Yates)
 function shuffleArray<T>(arr: T[]): T[] {
@@ -33,102 +41,7 @@ interface Message {
   audioUrl?: string;
 }
 
-// Custom Skill Shield SVG Component
-const SkillShield = ({ filled }: { filled: boolean }) => (
-  <svg 
-    className={`w-6 h-8 drop-shadow-sm transition-all duration-300 ${filled ? "text-amber-500 fill-amber-400 scale-110 animate-bounce-subtle" : "text-slate-200 fill-slate-100"}`} 
-    viewBox="0 0 24 30"
-  >
-    <path 
-      d="M12 2 L2 5 C2 15, 6 24, 12 28 C18 24, 22 15, 22 5 Z" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-    />
-    {filled && (
-      <path 
-        d="M12 7 L14 11 L19 11 L15 14 L17 19 L12 16 L7 19 L9 14 L5 11 L10 11 Z" 
-        fill="white" 
-        transform="translate(4, 5) scale(0.65)"
-      />
-    )}
-  </svg>
-);
-
-const Soundwave = () => (
-  <div className="flex items-center gap-1 h-6 select-none shrink-0">
-    <span className="w-1 bg-indigo-500 dark:bg-indigo-400 rounded-full animate-bounce" style={{ height: "60%", animationDuration: "0.8s", animationDelay: "0.1s" }} />
-    <span className="w-1 bg-indigo-500 dark:bg-indigo-400 rounded-full animate-bounce" style={{ height: "100%", animationDuration: "0.7s", animationDelay: "0.2s" }} />
-    <span className="w-1 bg-indigo-500 dark:bg-indigo-400 rounded-full animate-bounce" style={{ height: "40%", animationDuration: "0.9s", animationDelay: "0.3s" }} />
-    <span className="w-1 bg-indigo-500 dark:bg-indigo-400 rounded-full animate-bounce" style={{ height: "80%", animationDuration: "0.6s", animationDelay: "0.4s" }} />
-    <span className="w-1 bg-indigo-500 dark:bg-indigo-400 rounded-full animate-bounce" style={{ height: "50%", animationDuration: "0.8s", animationDelay: "0.5s" }} />
-  </div>
-);
-
-const TeacherAvatar = ({ state }: { state: "idle" | "speaking" | "listening" | "thinking" }) => {
-  let ringColor = "border-blue-300 dark:border-blue-700";
-  let pulseClass = "";
-  let badgeText = "Cô Lily AI 👩‍🏫";
-  let badgeTheme = "bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800";
-
-  if (state === "speaking") {
-    ringColor = "border-emerald-400 dark:border-emerald-600";
-    pulseClass = "animate-pulse ring-4 ring-emerald-100 dark:ring-emerald-950/20";
-    badgeText = "Cô Lily đang nói... 🔊";
-    badgeTheme = "bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900";
-  } else if (state === "listening") {
-    ringColor = "border-rose-400 dark:border-rose-600";
-    pulseClass = "animate-pulse ring-4 ring-rose-100 dark:ring-rose-950/20";
-    badgeText = "Cô đang nghe con nè... 🎤";
-    badgeTheme = "bg-rose-50 text-rose-600 border-rose-300 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900";
-  } else if (state === "thinking") {
-    ringColor = "border-amber-400 dark:border-amber-600";
-    pulseClass = "animate-pulse ring-4 ring-amber-100 dark:ring-amber-950/20";
-    badgeText = "Cô đang suy nghĩ... 🧠";
-    badgeTheme = "bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900";
-  }
-
-  return (
-    <div className="flex items-center gap-3 p-3 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 w-full select-none">
-      <div className={`relative w-12 h-12 rounded-full border-2 ${ringColor} ${pulseClass} transition-all duration-300 flex items-center justify-center bg-sky-50 dark:bg-slate-800 shadow-sm shrink-0`}>
-        {/* Cute female teacher avatar SVG */}
-        <svg className="w-8 h-8 text-indigo-500 fill-indigo-100 dark:text-indigo-400 dark:fill-indigo-950/30" viewBox="0 0 24 24">
-          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" />
-          <circle cx="10.5" cy="8" r="1.5" stroke="currentColor" strokeWidth="1" fill="none" />
-          <circle cx="13.5" cy="8" r="1.5" stroke="currentColor" strokeWidth="1" fill="none" />
-          <line x1="12" y1="8" x2="12" y2="8" stroke="currentColor" strokeWidth="1" />
-        </svg>
-        {state === "speaking" && (
-          <span className="absolute -top-0.5 -right-0.5 flex h-3 w-3">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 text-[8px] items-center justify-center">🔊</span>
-          </span>
-        )}
-        {state === "listening" && (
-          <span className="absolute -top-0.5 -right-0.5 flex h-3 w-3">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500 text-[8px] items-center justify-center">🎤</span>
-          </span>
-        )}
-        {state === "thinking" && (
-          <span className="absolute -top-0.5 -right-0.5 flex h-3 w-3">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500 text-[8px] items-center justify-center">🧠</span>
-          </span>
-        )}
-      </div>
-      
-      <div className="flex-1 min-w-0 text-left">
-        <div className="flex items-center gap-1">
-          <span className="text-sm font-black text-slate-800 dark:text-slate-100">Cô Lily AI</span>
-          <span className="bg-gradient-to-r from-blue-400 to-indigo-500 text-white text-[8px] px-1 py-0.2 rounded font-mono font-black uppercase">PRO</span>
-        </div>
-        <span className={`inline-block mt-0.5 px-2 py-0.5 rounded-full text-[10px] font-black border shadow-sm ${badgeTheme}`}>
-          {badgeText}
-        </span>
-      </div>
-    </div>
-  );
-};
+// Inline helper components removed and loaded from components directory
 
 export default function InteractiveTest() {
   const [stage, setStage] = useState<Stage>("intro");
@@ -1639,397 +1552,30 @@ export default function InteractiveTest() {
   // 2. Report Card view (Results screen)
   if (stage === "results") {
     return (
-      <div className="w-full min-h-screen pb-20 relative bg-pastel-bg dark:bg-dark-bg overflow-x-hidden">
-        {/* Decorative bubbles */}
-
-        {/* Header bar */}
-        <header className="w-full bg-white dark:bg-slate-900 border-b-4 border-slate-100 dark:border-slate-700 py-3 md:py-4 px-3 md:px-4 sticky top-0 z-30 shadow-sm">
-          <div className="max-w-4xl mx-auto flex items-center justify-between">
-            <Link href="/">
-              <button className="btn-3d-gray px-4 py-2.5 text-xs font-black flex items-center gap-1">
-                Quay Lại Trang Chủ
-              </button>
-            </Link>
-            
-            <div className="flex items-center gap-1.5 md:gap-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-600 px-3 md:px-4 py-1 md:py-1.5 rounded-2xl">
-              <Trophy className="w-5 h-5 text-amber-500 animate-bounce" />
-              <span className="text-[10px] md:text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider">
-                Kết Quả Đánh Giá Năng Lực Đầu Vào
-              </span>
-            </div>
-
-            <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-emerald-100 dark:bg-emerald-950/50 flex items-center justify-center border-2 border-emerald-300 dark:border-emerald-700">
-              <span className="text-lg">👑</span>
-            </div>
-          </div>
-        </header>
-
-        <main className="max-w-3xl w-full mx-auto px-3 md:px-4 mt-6 md:mt-8 flex flex-col gap-6 md:gap-8 relative z-10">
-          
-          {/* Satisfaction Star Rating Card */}
-          <section className="bg-white dark:bg-slate-900 rounded-3xl border-4 border-indigo-100 dark:border-indigo-800 p-4 md:p-6 shadow-md text-center w-full animate-fade-in relative z-20">
-            <h3 className="text-sm md:text-base font-black text-slate-800 dark:text-slate-100 flex items-center justify-center gap-1.5 mb-1.5 font-sans">
-              <span>🌟</span> Con đánh giá độ hài lòng về bài test này nhé!
-            </h3>
-            <p className="text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 mb-3 font-sans">
-              Hãy bấm vào các ngôi sao bên dưới để tặng cô Lily sao nhé! 5 sao là bé cực kỳ thích đó! ⭐
-            </p>
-            <div className="flex items-center justify-center gap-3">
-              {[1, 2, 3, 4, 5].map((starIndex) => (
-                <button
-                  key={starIndex}
-                  type="button"
-                  onClick={() => {
-                    setSelectedRatingStars(starIndex);
-                    updateInteractiveSessionStars(starIndex);
-                  }}
-                  onMouseEnter={() => setHoveredRatingStars(starIndex)}
-                  onMouseLeave={() => setHoveredRatingStars(null)}
-                  className="transition-transform duration-200 hover:scale-125 focus:outline-none cursor-pointer text-4xl select-none"
-                >
-                  <span className={(starIndex <= (hoveredRatingStars ?? selectedRatingStars ?? 0)) ? "text-amber-400 drop-shadow-md" : "text-slate-200 dark:text-slate-700"}>
-                    ★
-                  </span>
-                </button>
-              ))}
-            </div>
-            {selectedRatingStars !== null && (
-              <p className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 mt-2 tracking-wide uppercase animate-pulse">
-                Cảm ơn con đã tặng cô {selectedRatingStars} sao yêu thích! 🎉
-              </p>
-            )}
-          </section>
-
-          {/* Export & Share Buttons */}
-          <div className="flex flex-row justify-center flex-wrap gap-4 my-4">
-            <button onClick={exportToImage} className="flex items-center gap-2 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-4 py-2 rounded-xl font-bold transition-all shadow-sm">
-              <Download className="w-4 h-4" /> Tải Ảnh Kết Quả
-            </button>
-            <button onClick={exportToPDF} className="flex items-center gap-2 bg-rose-100 hover:bg-rose-200 text-rose-700 px-4 py-2 rounded-xl font-bold transition-all shadow-sm">
-              <FileText className="w-4 h-4" /> Xuất File PDF
-            </button>
-            <button onClick={shareToZalo} className="flex items-center gap-2 bg-blue-100 hover:bg-blue-200 text-blue-700 px-4 py-2 rounded-xl font-bold transition-all shadow-sm">
-              <Share2 className="w-4 h-4" /> Chia sẻ Zalo
-            </button>
-          </div>
-
-          {/* Certificate Showcase Card */}
-          <section ref={resultsRef} className="bg-white dark:bg-slate-900 rounded-3xl border-4 border-amber-300 dark:border-amber-800 p-5 md:p-8 shadow-xl text-center relative overflow-hidden">
-            <div className="absolute top-2 left-6 text-2xl animate-bounce" style={{ animationDelay: "1s" }}>✨</div>
-            <div className="absolute top-8 right-8 text-2xl animate-bounce" style={{ animationDelay: "2.5s" }}>🎈</div>
-            
-            <span className="bg-blue-50 text-blue-600 text-xs font-black uppercase tracking-wider px-4 py-1.5 rounded-full border border-blue-200 inline-flex items-center gap-1.5 mb-4 shadow-sm">
-              <Award className="w-3.5 h-3.5 text-blue-500 fill-blue-100" />
-              Chứng Nhận Năng Lực Tiếng Anh
-            </span>
-
-            <h2 className="text-2xl md:text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tight">
-              BẢNG KẾT QUẢ CỦA BÉ {kidName.toUpperCase()}
-            </h2>
-            <p className="text-xs md:text-sm text-slate-400 dark:text-slate-500 font-extrabold mt-1">Tuổi học viên: {kidAge} tuổi</p>
-
-            {/* Stacking Recommended Level (ô 1) and Development Radar Chart (ô 2) vertically */}
-            <div className="flex flex-col gap-6 items-center justify-center my-8 max-w-xl mx-auto w-full">
-              {/* Top: Recommended Level Badge (ô 1) */}
-              <div className={`border-2 rounded-3xl p-6 shadow-md transition-all hover:scale-105 duration-300 text-center w-full flex flex-col justify-center items-center ${overallLevelInfo.theme}`}>
-                <span className="text-5xl block animate-bounce" style={{ animationDuration: "2s" }}>
-                  {overallLevelInfo.mascot}
-                </span>
-                <span className="text-xs font-black opacity-60 uppercase tracking-widest block mt-2">
-                  Trình độ khuyến nghị
-                </span>
-                <span className="text-3xl font-black block mt-1 tracking-tight font-sans">
-                  {overallLevelInfo.name}
-                </span>
-                <span className="inline-block mt-3 bg-white/70 dark:bg-slate-800/70 px-3 py-1 rounded-xl text-xs font-bold border border-current">
-                  {overallLevelInfo.title}
-                </span>
-              </div>
-
-              {/* Bottom: Development Radar Chart (ô 2) */}
-              {(() => {
-                const chartData = [
-                  isSkillTested("speaking") && { label: "Speaking (Nói)", value: scores.speaking, emoji: "🎤" },
-                  isSkillTested("listening") && { label: "Listening (Nghe)", value: scores.listening, emoji: "🎧" },
-                  isSkillTested("reading") && { label: "Reading (Đọc)", value: scores.reading, emoji: "📖" },
-                  isSkillTested("writing") && { label: "Writing (Viết)", value: scores.writing, emoji: "✍️" },
-                ].filter(Boolean) as any[];
-
-                if (chartData.length >= 3) {
-                  return (
-                    <div className="flex justify-center items-center w-full">
-                      <DevelopmentRadarChart
-                        title="Biểu đồ phát triển"
-                        colorScheme="violet"
-                        size={380}
-                        data={chartData}
-                      />
-                    </div>
-                  );
-                }
-                return null;
-              })()}
-            </div>
-
-            {/* Skills Shields Matrix Grid */}
-            <div className="bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-600 rounded-3xl p-4 md:p-6 shadow-inner mt-4 md:mt-6">
-              <h3 className="text-xs md:text-sm font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4 md:mb-6">
-                Đánh giá theo các kỹ năng được thi
-              </h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
-                {/* Speaking */}
-                <div className={`bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center justify-between shadow-sm ${!isSkillTested("speaking") ? "opacity-40 bg-slate-50/50 dark:bg-slate-900/30" : ""}`}>
-                  <div>
-                    <h4 className="font-extrabold text-sm text-slate-700 dark:text-slate-200">🎤 Speaking (Kỹ năng Nói)</h4>
-                    {isSkillTested("speaking") ? (
-                      <p className="text-[10px] text-slate-400 dark:text-slate-400 font-bold mt-0.5">Điểm quy đổi: {scores.speaking}/100</p>
-                    ) : (
-                      <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold mt-0.5">Không đánh giá (N/A)</p>
-                    )}
-                  </div>
-                  {isSkillTested("speaking") ? (
-                    <div className="flex gap-1">
-                      {Array.from({ length: 5 }).map((_, i) => (
-                        <SkillShield key={i} filled={i < getShieldsCount(scores.speaking)} />
-                      ))}
-                    </div>
-                  ) : (
-                    <span className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 px-2.5 py-1 rounded-xl font-bold border border-slate-200 dark:border-slate-700 select-none">
-                      N/A
-                    </span>
-                  )}
-                </div>
-
-                {/* Listening */}
-                <div className={`bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center justify-between shadow-sm ${!isSkillTested("listening") ? "opacity-40 bg-slate-50/50 dark:bg-slate-900/30" : ""}`}>
-                  <div>
-                    <h4 className="font-extrabold text-sm text-slate-700 dark:text-slate-200">🎧 Listening (Kỹ năng Nghe)</h4>
-                    {isSkillTested("listening") ? (
-                      <p className="text-[10px] text-slate-400 dark:text-slate-400 font-bold mt-0.5">Điểm quy đổi: {scores.listening}/100</p>
-                    ) : (
-                      <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold mt-0.5">Không đánh giá (N/A)</p>
-                    )}
-                  </div>
-                  {isSkillTested("listening") ? (
-                    <div className="flex gap-1">
-                      {Array.from({ length: 5 }).map((_, i) => (
-                        <SkillShield key={i} filled={i < getShieldsCount(scores.listening)} />
-                      ))}
-                    </div>
-                  ) : (
-                    <span className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 px-2.5 py-1 rounded-xl font-bold border border-slate-200 dark:border-slate-700 select-none">
-                      N/A
-                    </span>
-                  )}
-                </div>
-
-                {/* Reading */}
-                <div className={`bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center justify-between shadow-sm ${!isSkillTested("reading") ? "opacity-40 bg-slate-50/50 dark:bg-slate-900/30" : ""}`}>
-                  <div>
-                    <h4 className="font-extrabold text-sm text-slate-700 dark:text-slate-200">📖 Reading (Kỹ năng Đọc)</h4>
-                    {isSkillTested("reading") ? (
-                      <p className="text-[10px] text-slate-400 dark:text-slate-400 font-bold mt-0.5">Điểm quy đổi: {scores.reading}/100</p>
-                    ) : (
-                      <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold mt-0.5">Không đánh giá (N/A)</p>
-                    )}
-                  </div>
-                  {isSkillTested("reading") ? (
-                    <div className="flex gap-1">
-                      {Array.from({ length: 5 }).map((_, i) => (
-                        <SkillShield key={i} filled={i < getShieldsCount(scores.reading)} />
-                      ))}
-                    </div>
-                  ) : (
-                    <span className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 px-2.5 py-1 rounded-xl font-bold border border-slate-200 dark:border-slate-700 select-none">
-                      N/A
-                    </span>
-                  )}
-                </div>
-
-                {/* Writing */}
-                <div className={`bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center justify-between shadow-sm ${!isSkillTested("writing") ? "opacity-40 bg-slate-50/50 dark:bg-slate-900/30" : ""}`}>
-                  <div>
-                    <h4 className="font-extrabold text-sm text-slate-700 dark:text-slate-200">✍️ Writing (Kỹ năng Viết)</h4>
-                    {isSkillTested("writing") ? (
-                      <p className="text-[10px] text-slate-400 dark:text-slate-400 font-bold mt-0.5">Điểm quy đổi: {scores.writing}/100</p>
-                    ) : (
-                      <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold mt-0.5">Không đánh giá (N/A)</p>
-                    )}
-                  </div>
-                  {isSkillTested("writing") ? (
-                    <div className="flex gap-1">
-                      {Array.from({ length: 5 }).map((_, i) => (
-                        <SkillShield key={i} filled={i < getShieldsCount(scores.writing)} />
-                      ))}
-                    </div>
-                  ) : (
-                    <span className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 px-2.5 py-1 rounded-xl font-bold border border-slate-200 dark:border-slate-700 select-none">
-                      N/A
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-          </section>
-
-          {/* AI Feedback Section */}
-          <section className="bg-white dark:bg-slate-900 rounded-3xl border-4 border-slate-100 dark:border-slate-700 p-4 md:p-6 md:p-8 shadow-xl">
-            <div className="flex flex-col sm:flex-row items-start gap-5">
-              
-              <div className="shrink-0 flex sm:flex-col items-center gap-2 self-center sm:self-start bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl p-4 w-full sm:w-28 text-center shadow-inner">
-                <span className="text-5xl animate-bounce" style={{ animationDuration: "2.5s" }}>
-                  {overallLevelInfo.mascot}
-                </span>
-                <div>
-                  <p className="text-slate-700 dark:text-slate-200 leading-tight font-black">
-                    {overallLevelInfo.title}
-                  </p>
-                  <p className="text-[9px] font-extrabold text-slate-400 dark:text-slate-500 mt-0.5">Cô giáo AI</p>
-                </div>
-              </div>
-
-              <div className="flex-1 w-full">
-                <div className="relative bg-emerald-50 border-2 border-emerald-200 rounded-3xl p-5 shadow-sm">
-                  <div className="hidden sm:block absolute left-0 top-8 w-4 h-4 bg-emerald-50 border-l-2 border-b-2 border-emerald-200 transform -translate-x-[9px] rotate-45" />
-                  
-                  <h4 className="text-emerald-800 font-extrabold text-sm mb-2 flex items-center gap-1.5">
-                    Lời khuyên nồng nhiệt của cô giáo dành cho bé {kidName}:
-                  </h4>
-                  
-                  <p className="text-slate-700 text-sm font-extrabold leading-relaxed">
-                    "{overallLevelInfo.desc}"
-                  </p>
-                </div>
-              </div>
-
-            </div>
-          </section>
-
-          {/* Learning Roadmap checklist */}
-          <section className="bg-white dark:bg-slate-900 rounded-3xl border-4 border-slate-100 dark:border-slate-700 p-4 md:p-6 md:p-8 shadow-xl">
-            <h3 className="text-xl font-black text-slate-800 dark:text-slate-100 flex items-center gap-2 mb-4 border-b dark:border-slate-800 pb-4">
-              <Compass className="w-6 h-6 text-blue-500 animate-spin" style={{ animationDuration: "8s" }} />
-              Lộ trình rèn luyện nâng cao năng lực 🚀
-            </h3>
-            
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-bold leading-relaxed mb-6">
-              Dựa trên kết quả thi đầu vào, cô giáo AI đã chuẩn hóa riêng cho con 3 bài tập nhỏ luyện tập tại nhà:
-            </p>
-
-            <div className="space-y-4">
-              {roadmapTasks().map((task, index) => (
-                <div key={index} className="border-2 border-blue-50 dark:border-slate-800 bg-white dark:bg-slate-800 rounded-2xl p-4 flex items-start gap-3 shadow-sm hover:border-blue-200 dark:hover:border-slate-700 transition-colors">
-                  <span className="inline-block text-xs font-black bg-blue-100/60 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded-md mr-2 font-mono shrink-0">
-                    Bài {index + 1}
-                  </span>
-                  <div className="text-sm font-extrabold leading-relaxed text-slate-700 dark:text-slate-200">
-                    {task}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* Chat Transcript Section */}
-          <section className="bg-white dark:bg-slate-900 rounded-3xl border-4 border-slate-100 dark:border-slate-700 p-4 md:p-6 md:p-8 shadow-xl mt-6">
-            <h3 className="text-xl font-black text-slate-800 dark:text-slate-100 flex items-center gap-2 mb-4 border-b dark:border-slate-800 pb-4">
-              💬 Lịch sử trò chuyện với cô giáo
-            </h3>
-            <div className="space-y-4">
-              {messages.map((msg, idx) => (
-                <div key={idx} className={`flex ${msg.role === "ai" ? "justify-start" : "justify-end"}`}>
-                  <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm font-bold shadow-sm ${msg.role === "ai" ? "bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-slate-50 border-2 border-slate-200 dark:border-slate-600" : "bg-blue-600 dark:bg-indigo-500 text-white"}`}>
-                    <div className="text-[10px] uppercase font-black tracking-wider opacity-60 mb-1 flex items-center gap-1">
-                      {msg.role === "ai" ? (
-                        <><span>🤖</span> Cô giáo AI</>
-                      ) : (
-                        <><span>👤</span> Học viên {kidName}</>
-                      )}
-                    </div>
-                    {msg.content}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* Control Actions / MongoDB Sync trigger */}
-          <section className="flex flex-col sm:flex-row items-center justify-center gap-4 relative z-20">
-            
-            {saveSuccess === null ? (
-              <button 
-                onClick={saveResultsToDb}
-                disabled={isSaving}
-                className="btn-3d-green w-full sm:w-auto px-8 py-4 text-sm tracking-wider uppercase flex items-center justify-center gap-2 hover:scale-105 disabled:opacity-50 cursor-pointer"
-              >
-                {isSaving ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Đang lưu trữ...
-                  </>
-                ) : (
-                  <>
-                    Lưu kết quả học tập 💾
-                  </>
-                )}
-              </button>
-            ) : saveSuccess ? (
-              <div className="w-full sm:w-auto px-6 py-3 bg-emerald-50 border-2 border-emerald-300 text-emerald-700 rounded-2xl text-xs font-black flex items-center justify-center gap-1.5 shadow-sm">
-                <CheckCircle2 className="w-4 h-4 shrink-0" />
-                Đồng bộ database thành công! 🚀
-              </div>
-            ) : (
-              <div className="w-full sm:w-auto px-6 py-3 bg-rose-50 border-2 border-rose-300 text-rose-700 rounded-2xl text-xs font-black flex items-center justify-center gap-1.5 shadow-sm">
-                <XCircle className="w-4 h-4 shrink-0" />
-                Không thể kết nối. Lưu offline! 🔌
-              </div>
-            )}
-
-            <button
-              onClick={() => {
-                setStage("intro");
-                setMessages([]);
-                setKeywordsMentioned([]);
-                setProbingTurnsCount(0);
-                setShowMcq(false);
-                setSelectedMcqOption(null);
-                setMcqAnswered(false);
-                setIsMcqCorrect(null);
-                setTypedWord("");
-                setWritingSubmitted(false);
-                setSaveSuccess(null);
-                setPictureIndex(0);
-                setSubQuestionIndex(0);
-                lastAskedPicIndexRef.current = null;
-                setAttemptsCount(0);
-                setKeywordsHitPic1(0);
-                setTotalProbingTurns(0);
-                setWritingTaskIndex(0);
-                setSpellingCorrect1(null);
-                setSpellingCorrect2(null);
-                setActiveSessionId(null);
-                setSelectedRatingStars(null);
-                setHoveredRatingStars(null);
-              }}
-              className="btn-3d-yellow w-full sm:w-auto px-8 py-4 text-sm tracking-wider uppercase flex items-center justify-center gap-1 hover:scale-105 cursor-pointer"
-            >
-              <RefreshCw className="w-4 h-4" />
-              Thi Lại Bài Test 🔄
-            </button>
-
-            <Link href="/" className="w-full sm:w-auto">
-              <button className="btn-3d-blue w-full sm:w-auto px-8 py-4 text-sm tracking-wider uppercase flex items-center justify-center gap-1 hover:scale-105 cursor-pointer">
-                <Home className="w-4 h-4" />
-                Về Trang Chủ 🏠
-              </button>
-            </Link>
-
-          </section>
-
-        </main>
-      </div>
+      <ResultsStage
+        overallLevelInfo={overallLevelInfo}
+        scores={scores}
+        kidName={kidName}
+        kidAge={kidAge}
+        selectedRatingStars={selectedRatingStars}
+        hoveredRatingStars={hoveredRatingStars}
+        saveSuccess={saveSuccess}
+        isSaving={isSaving}
+        messages={messages}
+        isSkillTested={isSkillTested}
+        getShieldsCount={getShieldsCount}
+        roadmapTasks={roadmapTasks}
+        setSelectedRatingStars={setSelectedRatingStars}
+        setHoveredRatingStars={setHoveredRatingStars}
+        updateInteractiveSessionStars={updateInteractiveSessionStars}
+        exportToImage={exportToImage}
+        exportToPDF={exportToPDF}
+        shareToZalo={shareToZalo}
+        saveResultsToDb={saveResultsToDb}
+        setStage={setStage}
+        startTest={startTest}
+        resultsRef={resultsRef}
+      />
     );
   }
 
@@ -2099,300 +1645,57 @@ export default function InteractiveTest() {
             
             {/* Left Column: Tranh & Bài học */}
             <div className={`lg:col-span-6 flex flex-col min-h-0 shrink-0 max-h-[48vh] sm:max-h-[55vh] lg:max-h-full lg:h-full ${stage === "warmup" ? "hidden lg:flex" : ""}`}>
-             {stage === "warmup" && (
-               <div className="flex-1 flex flex-col justify-center items-center text-center p-4">
-                 <div className="relative mb-6">
-                   <div className="absolute inset-0 bg-gradient-to-r from-blue-300 to-indigo-300 rounded-full blur-xl opacity-30 animate-pulse" />
-                   <span className="text-[120px] md:text-[160px] leading-none block relative animate-bounce" style={{ animationDuration: "3s" }}>🏫</span>
-                 </div>
-                 <h3 className="text-2xl font-black text-slate-800 dark:text-slate-100 mb-2">Giai đoạn 1: Chào hỏi với cô giáo AI</h3>
-                 <p className="text-sm md:text-base text-slate-500 dark:text-slate-400 max-w-md leading-relaxed font-black">
-                   Con hãy lắng nghe câu hỏi của cô giáo Lily, nhấn nút micro ở dưới cùng và nói thật rõ ràng nhé! 🎤🌟
-                 </p>
-                 
-               </div>
-             )}
+              {stage === "warmup" && <WarmupStage />}
 
-             {stage === "picture" && currentQuestion && (
-               <div className="flex-1 flex flex-col min-h-0 justify-between gap-2.5">
-                 <div>
-                   <h3 className="font-extrabold text-amber-700 dark:text-amber-300 flex items-center justify-between mb-3 text-xs uppercase tracking-wider">
-                     <div className="flex items-center gap-2">
-                       <span className="text-lg">🖼️</span>
-                       <span>Bức tranh {pictureIndex + 1}/2 — Thử thách {subQuestionIndex + 1}/{currentQuestion.questions?.length || 5}</span>
-                     </div>
-                     
-                     {/* Cambridge shield trackers */}
-                     <div className="flex gap-0.5">
-                       {Array.from({ length: currentQuestion.questions?.length || 5 }).map((_, i) => (
-                         <SkillShield key={i} filled={i <= subQuestionIndex} />
-                       ))}
-                     </div>
-                   </h3>
-                 </div>
+              {stage === "picture" && currentQuestion && (
+                <PictureStage
+                  currentQuestion={currentQuestion}
+                  pictureIndex={pictureIndex}
+                  subQuestionIndex={subQuestionIndex}
+                  showVocabularyHint={showVocabularyHint}
+                  interactiveMode={interactiveMode}
+                  keywordsMentioned={keywordsMentioned}
+                  setIsImageZoomed={setIsImageZoomed}
+                />
+              )}
 
-                 {currentQuestion.imagePath && (
-                   <div 
-                     onClick={() => setIsImageZoomed(true)}
-                     className="relative w-full max-w-full sm:max-w-xl mx-auto aspect-video md:max-h-[500px] flex-1 min-h-[150px] sm:min-h-[220px] rounded-3xl overflow-hidden shadow-xl border-4 border-gradient-to-r from-amber-200 to-blue-200 dark:border-slate-700 hover:scale-[1.01] transition-transform duration-300 my-1 bg-slate-50 dark:bg-slate-950/40 cursor-pointer cursor-zoom-in"
-                   >
-                     <Image 
-                       src={currentQuestion.imagePath} 
-                       alt="Study illustration" 
-                       fill 
-                       className="object-contain"
-                       sizes="(max-width: 768px) 100vw, 700px"
-                       priority
-                     />
-                   </div>
-                 )}
+              {stage === "reading" && (
+                <ReadingStage
+                  activeStory={activeStory}
+                  showVocabularyHint={showVocabularyHint}
+                  interactiveMode={interactiveMode}
+                  showMcq={showMcq}
+                  activeMcq={activeMcq}
+                  selectedMcqOption={selectedMcqOption}
+                  mcqAnswered={mcqAnswered}
+                  handleMcqSelect={handleMcqSelect}
+                />
+              )}
 
-                 {/* Practice Mode Vocabulary Hints Card */}
-                 {(showVocabularyHint || (interactiveMode === "practice")) && (
-                   <div className="bg-amber-50/60 dark:bg-amber-950/10 border-2 border-dashed border-amber-200 dark:border-amber-900/40 rounded-2xl p-2.5 text-left shrink-0">
-                     <div className="flex items-center gap-1.5 mb-1">
-                       <span className="text-sm">💡</span>
-                       <h5 className="text-[10px] font-black uppercase text-amber-700 dark:text-amber-400 font-sans">Gợi ý từ vựng cho con:</h5>
-                     </div>
-                     <div className="flex flex-wrap gap-1.5">
-                       {(currentQuestion?.questions?.[subQuestionIndex]?.expectedKeywords || currentQuestion?.evaluationCriteria?.expectedKeywords || [])?.map((kw: string) => {
-                          const isHit = keywordsMentioned.some((k) => k.toLowerCase() === kw.toLowerCase());
-                          return (
-                            <span 
-                              key={kw} 
-                              className={`border rounded-xl px-2.5 py-0.5 text-xs font-bold shadow-sm font-sans transition-all duration-300 ${
-                                isHit 
-                                  ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 scale-105" 
-                                  : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700"
-                              }`}
-                            >
-                              {kw}
-                            </span>
-                          );
-                        })}
-                     </div>
-                   </div>
-                 )}
-
-                 {/* Simplified star counter for keywords */}
-                 <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800 p-2.5 rounded-2xl shrink-0">
-                   <span className="text-xs font-black text-slate-500 dark:text-slate-400">⭐ Từ vựng đạt:</span>
-                   <div className="flex items-center gap-1">
-                     <span className="text-lg font-black text-amber-500">{keywordsMentioned.length}</span>
-                     <span className="text-xs font-bold text-slate-400">từ</span>
-                     {keywordsMentioned.length > 0 && <span className="text-lg animate-bounce">🌟</span>}
-                   </div>
-                 </div>
-               </div>
-             )}
-
-             {stage === "reading" && (
-               <div className="flex-1 flex flex-col justify-center min-h-0 gap-2">
-                 {!showMcq ? (
-                   // Reading Aloud slide
-                   <div className="flex flex-col items-center p-1.5 min-h-0 w-full">
-                     <h3 className="font-extrabold text-emerald-800 dark:text-emerald-400 mb-2.5 flex items-center gap-2 text-sm uppercase tracking-wider">
-                       <span className="text-lg">📖</span>
-                       Đọc to câu chuyện dưới đây cho cô giáo Lily nghe nhé:
-                     </h3>
-                     
-                     <div className="relative bg-amber-50 dark:bg-slate-900 border-4 border-amber-200 dark:border-slate-700 rounded-3xl p-5 md:p-6 shadow-inner w-full max-w-xl mb-2.5">
-                       <span className="absolute -top-3 -left-3 text-2xl">✨</span>
-                       <span className="absolute -bottom-3 -right-3 text-2xl">🎈</span>
-                       <p className="text-base md:text-lg font-bold text-slate-800 dark:text-slate-100 leading-relaxed font-sans text-center select-none whitespace-normal">
-                         "{activeStory}"
-                       </p>
-                     </div>
-
-                     {/* Practice Mode Vocabulary Hints Card */}
-                     {(showVocabularyHint || (interactiveMode === "practice")) && (
-                       <div className="bg-amber-50/60 dark:bg-amber-950/10 border-2 border-dashed border-amber-200 dark:border-amber-900/40 rounded-2xl p-2.5 text-left w-full max-w-xl shrink-0">
-                         <div className="flex items-center gap-1.5 mb-1">
-                           <span className="text-sm">💡</span>
-                           <h5 className="text-[10px] font-black uppercase text-amber-700 dark:text-amber-400 font-sans">Gợi ý từ vựng cho con:</h5>
-                         </div>
-                         <div className="flex flex-wrap gap-1.5">
-                           {activeStory.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "").split(/\s+/).slice(0, 5).map((kw: string) => (
-                             <span key={kw} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-0.5 text-xs font-bold shadow-sm font-sans">
-                               {kw}
-                             </span>
-                           ))}
-                         </div>
-                       </div>
-                     )}
-                   </div>
-                 ) : (
-                   // Reading MCQ slide
-                   <div className="flex flex-col items-center p-2 min-h-0">
-                     <h3 className="font-extrabold text-blue-800 dark:text-blue-300 mb-4 flex items-center gap-2 text-sm uppercase tracking-wider">
-                       <span className="text-lg">🧩</span>
-                       Đã đến giờ trả lời câu hỏi! Chọn 1 đáp án đúng:
-                     </h3>
-                     
-                     <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-800 border-2 border-blue-100 dark:border-slate-700 rounded-2xl p-5 shadow-sm mb-5 text-center w-full max-w-lg">
-                       <p className="text-base md:text-xl font-black text-slate-800 dark:text-slate-100">
-                         {activeMcq.question}
-                       </p>
-                     </div>
-
-                     {/* Interactive MCQ Choices */}
-                     <div className="flex flex-col gap-3 w-full max-w-md">
-                       {activeMcq.options.map((option: string, idx: number) => {
-                         const isSelected = selectedMcqOption === idx;
-                         const isCorrectOption = idx === activeMcq.correctIndex;
-                         
-                         let optionClass = "bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-blue-400 dark:hover:border-blue-500 hover:translate-y-[-2px]";
-                         if (mcqAnswered) {
-                           if (isCorrectOption) {
-                             optionClass = "bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/60 dark:to-teal-950/60 border-emerald-500 border-l-4 border-l-emerald-500 text-emerald-800 dark:text-emerald-300 scale-[1.04] shadow-lg shadow-emerald-500/20 ring-4 ring-emerald-300/50 z-10";
-                           } else if (isSelected) {
-                             optionClass = "bg-rose-100 dark:bg-rose-950/50 border-rose-400 text-rose-700 dark:text-rose-300 opacity-60";
-                           } else {
-                             optionClass = "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-400 opacity-40";
-                           }
-                         }
-
-                         return (
-                           <button
-                             key={idx}
-                             type="button"
-                             onClick={() => handleMcqSelect(idx)}
-                             disabled={mcqAnswered}
-                             className={`w-full px-5 py-4 rounded-2xl font-black text-base md:text-lg transition-all duration-200 cursor-pointer shadow-sm flex items-center justify-between ${optionClass}`}
-                           >
-                             <span>{option}</span>
-                             {mcqAnswered && isCorrectOption && (
-                               <span className="text-2xl shrink-0 ml-2 animate-bounce">✅</span>
-                             )}
-                             {mcqAnswered && isSelected && !isCorrectOption && (
-                               <span className="text-2xl shrink-0 ml-2">❌</span>
-                             )}
-                           </button>
-                         );
-                       })}
-                     </div>
-                   </div>
-                 )}
-               </div>
-             )}
-
-             {stage === "writing" && (
-               <div className="flex-1 flex flex-col justify-center items-center min-h-0">
-                 <h3 className="font-extrabold text-indigo-800 dark:text-indigo-300 mb-4 flex items-center gap-2 text-sm uppercase tracking-wider">
-                   <span className="text-lg">✍️</span>
-                   Thử thách đánh vần [{writingTaskIndex + 1}/2]
-                 </h3>
-
-                 <div className="bg-white dark:bg-slate-900 border-4 border-indigo-200 dark:border-slate-700 rounded-3xl p-5 md:p-6 shadow-md w-full max-w-md flex flex-col items-center text-center">
-                   <div className="relative w-20 h-20 md:w-24 md:h-24 rounded-full bg-indigo-50 dark:bg-slate-800 border-2 border-indigo-200 flex items-center justify-center text-4xl md:text-5xl mb-4 shadow-inner">
-                     <span className="absolute inset-0 rounded-full border-4 border-dashed border-indigo-300/40 animate-spin" style={{ animationDuration: "12s" }} />
-                     <span className="animate-bounce" style={{ animationDuration: "2.5s" }}>
-                       {writingTaskIndex === 0 ? "🐒" : "🍌"}
-                     </span>
-                   </div>
-                   
-                   <p className="text-slate-700 dark:text-slate-200 font-extrabold text-sm md:text-base leading-relaxed mb-4 bg-slate-50 dark:bg-slate-800 px-4 py-2.5 rounded-2xl border border-slate-100 dark:border-slate-700 w-full text-center">
-                     Cô Lily hỏi: &quot;{activeSpelling[writingTaskIndex].prompt}&quot;
-                   </p>
-
-                   {/* Answer zone — where selected letters appear */}
-                   <div 
-                     ref={answerZoneRef}
-                     onDragOver={(e) => handleDragOver(e, "answer")}
-                     onDragEnter={(e) => handleDragEnter(e, "answer")}
-                     onDragLeave={(e) => handleDragLeave(e, "answer")}
-                     onDrop={(e) => handleDrop(e, "answer")}
-                     className={`answer-zone w-full mb-4 transition-all duration-200 ${
-                       selectedLetters.length > 0 ? "has-letters" : ""
-                     } ${selectedLetters.length > 6 ? "scale-down" : ""} ${isDragOverAnswer ? "border-indigo-500 dark:border-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/40 ring-4 ring-indigo-200/50 scale-[1.02]" : ""}`}
-                   >
-                     {selectedLetters.length === 0 ? (
-                       <span className="text-xs font-bold text-slate-400 italic">
-                         Kéo thả chữ cái vào đây hoặc bấm để chọn... ✨
-                       </span>
-                     ) : (
-                       selectedLetters.map((tile, idx) => (
-                         <button
-                           key={`ans-${tile.id}`}
-                           onClick={() => !writingSubmitted && handleAnswerLetterTap(tile)}
-                           draggable={!writingSubmitted}
-                           onDragStart={(e) => handleDragStart(e, tile, "selected")}
-                           onDragEnd={handleDragEnd}
-                           onDragOver={(e) => handleDragOver(e, "answer")}
-                           onDrop={(e) => handleDropOnTile(e, idx)}
-                           className={`letter-tile in-answer transition-all duration-100 ${
-                             draggedTile?.id === tile.id ? "opacity-40 scale-95 border-dashed" : ""
-                           }`}
-                           type="button"
-                           disabled={writingSubmitted}
-                         >
-                           {tile.letter}
-                         </button>
-                       ))
-                     )}
-                   </div>
-
-                   {/* Available letter tiles */}
-                    <div 
-                      onDragOver={(e) => handleDragOver(e, "available")}
-                      onDragEnter={(e) => handleDragEnter(e, "available")}
-                      onDragLeave={(e) => handleDragLeave(e, "available")}
-                      onDrop={(e) => handleDrop(e, "available")}
-                      className={`flex flex-wrap gap-2.5 justify-center mb-4 p-3 rounded-2xl border-2 border-dashed transition-all duration-200 w-full ${
-                        isDragOverAvailable 
-                          ? "border-amber-400 dark:border-amber-500 bg-amber-50/40 dark:bg-slate-800/40 scale-[1.02] ring-4 ring-amber-100/30" 
-                          : "border-transparent"
-                      }`}
-                    >
-                     {availableLetters.map((tile) => (
-                       <button
-                         key={`avail-${tile.id}`}
-                         onClick={() => handleLetterTileTap(tile)}
-                         draggable={!writingSubmitted}
-                         onDragStart={(e) => handleDragStart(e, tile, "available")}
-                         onDragEnd={handleDragEnd}
-                         className={`letter-tile transition-all duration-100 ${
-                           draggedTile?.id === tile.id ? "opacity-40 scale-95 border-dashed" : ""
-                         }`}
-                         type="button"
-                         disabled={writingSubmitted}
-                       >
-                         {tile.letter}
-                       </button>
-                     ))}
-                   </div>
-
-                   {/* Action buttons */}
-                   <form onSubmit={handleWritingSubmit} className="w-full flex gap-2.5">
-                     <button
-                       type="button"
-                       onClick={handleResetLetters}
-                       disabled={selectedLetters.length === 0 || writingSubmitted}
-                       className="btn-3d-gray px-3 py-3 text-xs font-black flex items-center gap-1 flex-1"
-                     >
-                       <RotateCcw className="w-4 h-4" /> Xếp lại
-                     </button>
-                     <button
-                       type="submit"
-                       disabled={selectedLetters.length === 0 || writingSubmitted}
-                       className="btn-3d-blue py-3 font-extrabold text-sm flex items-center justify-center gap-2 flex-[2] disabled:opacity-50 cursor-pointer"
-                     >
-                       Nộp bài 🚀
-                     </button>
-                   </form>
-
-                   {writingSubmitted && (
-                     <div className="mt-4 animate-bounce-subtle text-xs font-black">
-                       {selectedLetters.map(t => t.letter).join("").toLowerCase() === activeSpelling[writingTaskIndex].correctWord.toLowerCase() ? (
-                         <span className="text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 px-3 py-1.5 rounded-full border border-emerald-200">🎉 Xuất sắc! Con đã ghép đúng rồi!</span>
-                       ) : (
-                         <span className="text-rose-500 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/20 px-3 py-1.5 rounded-full border border-rose-200">✍️ Gần đúng rồi, cô đang chấm điểm nhé!</span>
-                       )}
-                     </div>
-                   )}
-                 </div>
-               </div>
-             )}
+              {stage === "writing" && (
+                <WritingStage
+                  writingTaskIndex={writingTaskIndex}
+                  activeSpelling={activeSpelling}
+                  selectedLetters={selectedLetters}
+                  availableLetters={availableLetters}
+                  writingSubmitted={writingSubmitted}
+                  draggedTile={draggedTile}
+                  isDragOverAnswer={isDragOverAnswer}
+                  isDragOverAvailable={isDragOverAvailable}
+                  answerZoneRef={answerZoneRef}
+                  handleDragOver={handleDragOver}
+                  handleDragEnter={handleDragEnter}
+                  handleDragLeave={handleDragLeave}
+                  handleDrop={handleDrop}
+                  handleAnswerLetterTap={handleAnswerLetterTap}
+                  handleLetterTileTap={handleLetterTileTap}
+                  handleDragStart={handleDragStart}
+                  handleDragEnd={handleDragEnd}
+                  handleDropOnTile={handleDropOnTile}
+                  handleResetLetters={handleResetLetters}
+                  handleWritingSubmit={handleWritingSubmit}
+                />
+              )}
             </div>
 
             {/* Right Column: Trò chuyện cùng cô */}
